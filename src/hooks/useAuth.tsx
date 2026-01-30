@@ -1,12 +1,16 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/types';
+
+type Profile = Tables<'profiles'>;
 
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   isAdmin: boolean;
+  profile: Profile | null;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -19,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     // Set up auth state listener first
@@ -37,8 +42,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             .single();
           
           setIsAdmin(!!roles);
+          
+          // Fetch profile
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+          
+          setProfile(profileData);
         } else {
           setIsAdmin(false);
+          setProfile(null);
         }
         
         setLoading(false);
@@ -59,6 +74,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .single()
           .then(({ data: roles }) => {
             setIsAdmin(!!roles);
+          });
+        
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .single()
+          .then(({ data: profileData }) => {
+            setProfile(profileData);
           });
       }
       
@@ -112,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       loading,
       isAdmin,
+      profile,
       signUp,
       signIn,
       signOut,

@@ -7,6 +7,8 @@ import { CartProvider } from "@/contexts/CartContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Checkout from "./pages/Checkout";
+import PaymentResponse from "./pages/PaymentResponse";
 import MyOrders from "./pages/MyOrders";
 import MySubscriptions from "./pages/MySubscriptions";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -29,6 +31,8 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/pago-respuesta" element={<PaymentResponse />} />
               <Route path="/mis-pedidos" element={<MyOrders />} />
               <Route path="/mis-suscripciones" element={<MySubscriptions />} />
               
