@@ -97,16 +97,16 @@ export default function Footer() {
             </div>
 
             
-            <div className="flex gap-2">
-              <input
-                type="email"
-                placeholder="tu@email.com"
-                className="flex-1 px-4 py-2 bg-secondary-foreground/10 border border-secondary-foreground/20 rounded-lg text-sm focus:outline-none focus:border-primary transition-colors" />
+            
 
-              <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors">
-                Suscribir
-              </button>
-            </div>
+
+
+
+
+
+
+
+
           </div>
         </div>
 
