@@ -59,8 +59,8 @@ export default function SubscriptionSection() {
               <Coffee className="h-8 w-8 text-primary" />
             </div>
             <h3 className="font-display text-lg font-semibold text-secondary-foreground mb-2">Elige tu café</h3>
-            <p className="text-secondary-foreground/70 text-sm">Selecciona tu café favorito, 
-presentación y tipo de molido</p>
+            <p className="text-secondary-foreground/70 text-sm">Selecciona tu café favorito, presentación y tipo de molido
+            </p>
           </div>
           <div className="text-center">
             <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
