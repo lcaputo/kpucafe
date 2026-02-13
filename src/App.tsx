@@ -16,6 +16,8 @@ import AdminProducts from "./pages/admin/AdminProducts";
 import AdminOrders from "./pages/admin/AdminOrders";
 import AdminCustomers from "./pages/admin/AdminCustomers";
 import AdminShipping from "./pages/admin/AdminShipping";
+import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
+import AdminCoupons from "./pages/admin/AdminCoupons";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +44,8 @@ const App = () => (
                 <Route path="pedidos" element={<AdminOrders />} />
                 <Route path="clientes" element={<AdminCustomers />} />
                 <Route path="envios" element={<AdminShipping />} />
+                <Route path="suscripciones" element={<AdminSubscriptions />} />
+                <Route path="cupones" element={<AdminCoupons />} />
               </Route>
               
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

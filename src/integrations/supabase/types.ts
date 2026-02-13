@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          current_uses: number | null
+          description: string | null
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          min_order_amount: number | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          current_uses?: number | null
+          description?: string | null
+          discount_type?: string
+          discount_value: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          min_order_amount?: number | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          current_uses?: number | null
+          description?: string | null
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          min_order_amount?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -75,7 +120,9 @@ export type Database = {
       orders: {
         Row: {
           carrier: string | null
+          coupon_id: string | null
           created_at: string
+          discount_amount: number | null
           id: string
           notes: string | null
           payment_reference: string | null
@@ -93,7 +140,9 @@ export type Database = {
         }
         Insert: {
           carrier?: string | null
+          coupon_id?: string | null
           created_at?: string
+          discount_amount?: number | null
           id?: string
           notes?: string | null
           payment_reference?: string | null
@@ -111,7 +160,9 @@ export type Database = {
         }
         Update: {
           carrier?: string | null
+          coupon_id?: string | null
           created_at?: string
+          discount_amount?: number | null
           id?: string
           notes?: string | null
           payment_reference?: string | null
@@ -127,7 +178,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "orders_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       product_variants: {
         Row: {

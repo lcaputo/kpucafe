@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CreditCard, Truck, ShoppingBag, Loader2, MapPin, Plus, Check, AlertCircle, User } from 'lucide-react';
+import { ArrowLeft, CreditCard, Truck, ShoppingBag, Loader2, MapPin, Plus, Check, AlertCircle, User, Ticket, X } from 'lucide-react';
 import { useCart } from '@/contexts/CartContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useEpayco, EpaycoPaymentData } from '@/hooks/useEpayco';
@@ -70,6 +70,10 @@ export default function Checkout() {
   const [saveAddress, setSaveAddress] = useState(true);
   const [addressLabel, setAddressLabel] = useState('Casa');
   const [step, setStep] = useState<'account' | 'shipping' | 'review'>('shipping');
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; discount_type: string; discount_value: number } | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
 
   const [form, setForm] = useState<ShippingForm>({
     fullName: '', phone: '', email: '', password: '',
@@ -238,7 +242,7 @@ export default function Checkout() {
         .from('orders')
         .insert({
           user_id: user?.id || null,
-          total: totalPrice,
+          total: finalTotal,
           shipping_name: form.fullName,
           shipping_phone: form.phone,
           shipping_address: form.address,
@@ -247,7 +251,9 @@ export default function Checkout() {
           shipping_postal_code: form.postalCode,
           notes: form.notes,
           status: 'pending',
-        })
+          coupon_id: appliedCoupon?.id || null,
+          discount_amount: discountAmount,
+        } as any)
         .select()
         .single();
 
@@ -284,6 +290,13 @@ export default function Checkout() {
         extra1: order.id,
         extra2: user?.id || 'guest',
       };
+      // Increment coupon usage
+      if (appliedCoupon) {
+        const { data: cd } = await supabase.from('coupons').select('current_uses').eq('id', appliedCoupon.id).single();
+        if (cd) {
+          await supabase.from('coupons').update({ current_uses: ((cd as any).current_uses || 0) + 1 } as any).eq('id', appliedCoupon.id);
+        }
+      }
 
       openCheckout(paymentData);
     } catch (error: any) {
@@ -298,8 +311,55 @@ export default function Checkout() {
     }
   };
 
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponError('');
+    const { data, error } = await supabase
+      .from('coupons')
+      .select('*')
+      .eq('code', couponCode.toUpperCase().trim())
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error || !data) {
+      setCouponError('Cupón no válido');
+      setCouponLoading(false);
+      return;
+    }
+    if (data.expires_at && new Date(data.expires_at) < new Date()) {
+      setCouponError('Este cupón ha expirado');
+      setCouponLoading(false);
+      return;
+    }
+    if (data.max_uses && (data.current_uses || 0) >= data.max_uses) {
+      setCouponError('Este cupón ya alcanzó su límite de usos');
+      setCouponLoading(false);
+      return;
+    }
+    if ((data.min_order_amount || 0) > totalPrice) {
+      setCouponError(`Compra mínima de $${(data.min_order_amount || 0).toLocaleString('es-CO')}`);
+      setCouponLoading(false);
+      return;
+    }
+    setAppliedCoupon({ id: data.id, code: data.code, discount_type: data.discount_type, discount_value: data.discount_value });
+    setCouponLoading(false);
+    toast({ title: '¡Cupón aplicado!' });
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponCode('');
+    setCouponError('');
+  };
+
   const shippingCost = totalPrice >= 100000 ? 0 : 12000;
-  const finalTotal = totalPrice + shippingCost;
+  const discountAmount = appliedCoupon
+    ? appliedCoupon.discount_type === 'percentage'
+      ? Math.round(totalPrice * appliedCoupon.discount_value / 100)
+      : appliedCoupon.discount_value
+    : 0;
+  const finalTotal = Math.max(0, totalPrice - discountAmount + shippingCost);
 
   const inputClass = (field: string) =>
     `w-full px-4 py-3 rounded-xl border ${errors[field] ? 'border-destructive ring-2 ring-destructive/20' : 'border-border'} bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent transition-all`;
@@ -564,11 +624,50 @@ export default function Checkout() {
                       ))}
                     </div>
 
+                    {/* Coupon */}
+                    <div className="border-t border-border pt-4 mb-4">
+                      <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1.5">
+                        <Ticket className="h-4 w-4 text-primary" />
+                        Cupón de descuento
+                      </p>
+                      {appliedCoupon ? (
+                        <div className="flex items-center justify-between bg-primary/5 rounded-lg px-3 py-2">
+                          <div>
+                            <span className="font-mono font-semibold text-primary text-sm">{appliedCoupon.code}</span>
+                            <span className="text-xs text-muted-foreground ml-2">
+                              -{appliedCoupon.discount_type === 'percentage' ? `${appliedCoupon.discount_value}%` : `$${appliedCoupon.discount_value.toLocaleString('es-CO')}`}
+                            </span>
+                          </div>
+                          <button onClick={removeCoupon} className="p-1 text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
+                        </div>
+                      ) : (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={couponCode}
+                            onChange={e => { setCouponCode(e.target.value); setCouponError(''); }}
+                            placeholder="CÓDIGO"
+                            className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-foreground text-sm font-mono uppercase focus:ring-2 focus:ring-primary focus:border-transparent"
+                          />
+                          <button onClick={applyCoupon} disabled={couponLoading} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50">
+                            {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Aplicar'}
+                          </button>
+                        </div>
+                      )}
+                      {couponError && <p className="text-xs text-destructive mt-1">{couponError}</p>}
+                    </div>
+
                     <div className="border-t border-border pt-3 space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
                         <span className="text-foreground">${totalPrice.toLocaleString('es-CO')}</span>
                       </div>
+                      {discountAmount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Descuento</span>
+                          <span className="text-green-600 font-medium">-${discountAmount.toLocaleString('es-CO')}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Envío</span>
                         <span className="text-foreground">
