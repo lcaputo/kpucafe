@@ -178,7 +178,7 @@ export default function ProductVariantsManager({ productId, productName, onClose
               <div className="hidden sm:grid sm:grid-cols-[1fr_1fr_100px_80px_60px_40px] gap-2 text-xs font-semibold text-muted-foreground px-2">
                 <span>Peso</span>
                 <span>Molienda</span>
-                <span>+ Precio</span>
+                <span>Precio (COP)</span>
                 <span>Stock</span>
                 <span>Activo</span>
                 <span></span>
@@ -219,7 +219,7 @@ export default function ProductVariantsManager({ productId, productName, onClose
 
                   {/* Price modifier */}
                   <div>
-                    <label className="text-xs text-muted-foreground sm:hidden mb-1 block">+ Precio (COP)</label>
+                    <label className="text-xs text-muted-foreground sm:hidden mb-1 block">Precio (COP)</label>
                     <input
                       type="number"
                       value={variant.price_modifier}

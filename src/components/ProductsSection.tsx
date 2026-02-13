@@ -39,29 +39,28 @@ export default function ProductsSection() {
 
       const mapped = dbProducts.map(p => {
         const pVariants = dbVariants.filter(v => v.product_id === p.id);
-        const weights = Array.from(new Set(pVariants.map(v => v.weight))).map(w => {
-          const variant = pVariants.find(v => v.weight === w);
-          return { value: w, priceModifier: variant?.price_modifier || 0 };
-        });
+        const weights = Array.from(new Set(pVariants.map(v => v.weight))).map(w => ({ value: w }));
         const grinds = Array.from(new Set(pVariants.map(v => v.grind)));
 
-        // Build stock map: "weight-grind" -> stock
         const stockMap: Record<string, number> = {};
+        const priceMap: Record<string, number> = {};
         pVariants.forEach(v => {
-          stockMap[`${v.weight}-${v.grind}`] = v.stock ?? 0;
+          const key = `${v.weight}-${v.grind}`;
+          stockMap[key] = v.stock ?? 0;
+          priceMap[key] = (v.price_modifier ?? 0);
         });
 
         return {
           id: p.id,
           name: p.name,
           description: p.description || '',
-          basePrice: p.base_price,
           image: p.image_url || '/placeholder.svg',
-          weights: weights.length > 0 ? weights : [{ value: '250g', priceModifier: 0 }],
+          weights: weights.length > 0 ? weights : [{ value: '250g' }],
           grinds: grinds.length > 0 ? grinds : ['Grano', 'Molido'],
           roastLevel: p.roast_level || 3,
           origin: p.origin || '',
           stockMap,
+          priceMap,
         };
       });
 
