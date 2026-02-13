@@ -5,14 +5,14 @@ export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-coffee">
       {/* Background Pattern */}
-      <div 
+      <div
         className="absolute inset-0 opacity-30"
         style={{
           backgroundImage: `url(${patternMountains})`,
           backgroundSize: 'cover',
-          backgroundPosition: 'bottom',
-        }}
-      />
+          backgroundPosition: 'bottom'
+        }} />
+
       
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-secondary/90 via-secondary/70 to-primary/20" />
@@ -39,10 +39,10 @@ export default function Hero() {
               <a href="#productos" className="btn-kpu text-center">
                 Ver productos
               </a>
-              <a 
-                href="#suscripciones" 
-                className="px-8 py-4 border-2 border-primary text-primary font-semibold rounded-full hover:bg-primary hover:text-primary-foreground transition-all duration-300 text-center"
-              >
+              <a
+                href="#suscripciones"
+                className="px-8 py-4 border-2 border-primary text-primary font-semibold rounded-full hover:bg-primary hover:text-primary-foreground transition-all duration-300 text-center">
+
                 Suscribirse
               </a>
             </div>
@@ -68,11 +68,11 @@ export default function Hero() {
           <div className="relative flex justify-center lg:justify-end">
             <div className="relative animate-float">
               <div className="absolute inset-0 bg-primary/30 rounded-3xl blur-3xl scale-75" />
-              <img 
-                src={productoCafe} 
+              <img
+
                 alt="KPU Café Colombiano - Amarillo Exclusivo 500gr"
-                className="relative z-10 max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-elevated"
-              />
+                className="relative z-10 max-w-sm md:max-w-md lg:max-w-lg rounded-2xl shadow-elevated" src="/lovable-uploads/e6674358-dd79-4b5f-bf86-43889f8eb283.jpg" />
+
             </div>
           </div>
         </div>
@@ -81,12 +81,12 @@ export default function Hero() {
       {/* Bottom Wave */}
       <div className="absolute bottom-0 left-0 right-0">
         <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-          <path 
-            d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" 
-            fill="hsl(30 25% 97%)"
-          />
+          <path
+            d="M0 120L60 110C120 100 240 80 360 70C480 60 600 60 720 65C840 70 960 80 1080 85C1200 90 1320 90 1380 90L1440 90V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z"
+            fill="hsl(30 25% 97%)" />
+
         </svg>
       </div>
-    </section>
-  );
+    </section>);
+
 }
