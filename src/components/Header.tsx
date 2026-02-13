@@ -27,7 +27,7 @@ export default function Header() {
         <div className="flex items-center justify-between">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-3">
-            <img alt="KPU Café Colombiano" className="h-12 w-12 rounded-full object-cover" src="/lovable-uploads/27c7512e-5a0b-4786-a622-1136c7768a61.png" />
+            <img alt="KPU Café Colombiano" className="h-12 w-12 rounded-full object-cover" src="/lovable-uploads/b5ca903b-190c-42d1-bc05-a7b7aa79b434.png" />
             <div className="hidden sm:block">
               <span className="text-secondary-foreground font-display text-xl font-bold">KPU</span>
               <span className="text-primary font-display text-sm block -mt-1">Café Colombiano</span>
