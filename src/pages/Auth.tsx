@@ -6,7 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import logoKpu from '@/assets/logo-kpu.png';
 
 export default function Auth() {
-  const { user, loading, signIn, signUp } = useAuth();
+  const { user, loading, isAdmin, signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -26,7 +26,7 @@ export default function Auth() {
   }
 
   if (user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={isAdmin ? '/admin' : '/'} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,7 +49,7 @@ export default function Auth() {
             title: '¡Bienvenido!',
             description: 'Has iniciado sesión correctamente.',
           });
-          navigate('/');
+          // Redirect happens automatically via the user/isAdmin check above
         }
       } else {
         const { error } = await signUp(email, password, fullName);
