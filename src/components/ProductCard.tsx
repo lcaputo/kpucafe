@@ -25,9 +25,29 @@ export default function ProductCard({ product }: ProductCardProps) {
   const [selectedWeight, setSelectedWeight] = useState(product.weights[0]);
   const [isAdded, setIsAdded] = useState(false);
 
+  const getStock = (w: string, g: string) => product.stockMap?.[`${w}-${g}`] ?? 1;
+
+  const handleGrindChange = (grind: string) => {
+    setSelectedGrind(grind);
+    // If current weight has no stock for this grind, auto-select first available weight
+    if (getStock(selectedWeight.value, grind) <= 0) {
+      const available = product.weights.find(w => getStock(w.value, grind) > 0);
+      if (available) setSelectedWeight(available);
+    }
+  };
+
+  const handleWeightChange = (weight: typeof product.weights[0]) => {
+    setSelectedWeight(weight);
+    // If current grind has no stock for this weight, auto-select first available grind
+    if (getStock(weight.value, selectedGrind) <= 0) {
+      const available = product.grinds.find(g => getStock(weight.value, g) > 0);
+      if (available) setSelectedGrind(available);
+    }
+  };
+
   const currentPrice = product.priceMap?.[`${selectedWeight.value}-${selectedGrind}`] ?? 0;
-  const currentStock = product.stockMap?.[`${selectedWeight.value}-${selectedGrind}`] ?? null;
-  const isOutOfStock = currentStock !== null && currentStock <= 0;
+  const currentStock = getStock(selectedWeight.value, selectedGrind);
+  const isOutOfStock = currentStock <= 0;
 
   const handleAddToCart = () => {
     addItem({
@@ -96,11 +116,11 @@ export default function ProductCard({ product }: ProductCardProps) {
           <span className="text-xs text-muted-foreground block mb-2">Tipo:</span>
           <div className="flex gap-2">
             {product.grinds.map(grind => {
-              const allWeightsOut = product.weights.every(w => (product.stockMap?.[`${w.value}-${grind}`] ?? 1) <= 0);
+              const allWeightsOut = product.weights.every(w => getStock(w.value, grind) <= 0);
               return (
                 <button
                   key={grind}
-                  onClick={() => setSelectedGrind(grind)}
+                  onClick={() => handleGrindChange(grind)}
                   disabled={allWeightsOut}
                   className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
                     allWeightsOut
@@ -122,12 +142,11 @@ export default function ProductCard({ product }: ProductCardProps) {
           <span className="text-xs text-muted-foreground block mb-2">Presentación:</span>
           <div className="flex gap-2">
             {product.weights.map(weight => {
-              const weightStock = product.stockMap?.[`${weight.value}-${selectedGrind}`] ?? 1;
-              const weightOut = weightStock <= 0;
+              const weightOut = getStock(weight.value, selectedGrind) <= 0;
               return (
                 <button
                   key={weight.value}
-                  onClick={() => setSelectedWeight(weight)}
+                  onClick={() => handleWeightChange(weight)}
                   disabled={weightOut}
                   className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
                     weightOut
