@@ -9,11 +9,11 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <img 
-                src={logoKpu} 
-                alt="KPU Café" 
-                className="h-14 w-14 rounded-full object-cover"
-              />
+              <img
+                src={logoKpu}
+                alt="KPU Café"
+                className="h-14 w-14 rounded-full object-cover" />
+
               <div>
                 <span className="font-display text-2xl font-bold">KPU</span>
                 <span className="text-primary font-display text-sm block">Café Colombiano</span>
@@ -82,27 +82,27 @@ export default function Footer() {
           <div>
             <h3 className="font-display text-lg font-semibold mb-6">Síguenos</h3>
             <div className="flex gap-4 mb-8">
-              <a 
-                href="#" 
-                className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all"
-              >
+              <a
+                href="#"
+                className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all">
+
                 <Instagram className="h-5 w-5" />
               </a>
-              <a 
-                href="#" 
-                className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all"
-              >
+              <a
+                href="#"
+                className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center hover:bg-primary hover:text-primary-foreground transition-all">
+
                 <Facebook className="h-5 w-5" />
               </a>
             </div>
 
-            <h4 className="font-semibold text-sm mb-3">Newsletter</h4>
+            
             <div className="flex gap-2">
-              <input 
-                type="email" 
+              <input
+                type="email"
                 placeholder="tu@email.com"
-                className="flex-1 px-4 py-2 bg-secondary-foreground/10 border border-secondary-foreground/20 rounded-lg text-sm focus:outline-none focus:border-primary transition-colors"
-              />
+                className="flex-1 px-4 py-2 bg-secondary-foreground/10 border border-secondary-foreground/20 rounded-lg text-sm focus:outline-none focus:border-primary transition-colors" />
+
               <button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors">
                 Suscribir
               </button>
@@ -119,6 +119,6 @@ export default function Footer() {
           </p>
         </div>
       </div>
-    </footer>
-  );
+    </footer>);
+
 }
