@@ -11,7 +11,9 @@ import {
   LogOut,
   Menu,
   X,
-  Loader2
+  Loader2,
+  RefreshCw,
+  Ticket
 } from 'lucide-react';
 import logoKpu from '@/assets/logo-kpu.png';
 
@@ -73,6 +75,8 @@ export default function AdminDashboard() {
     { path: '/admin/pedidos', icon: Package, label: 'Pedidos' },
     { path: '/admin/clientes', icon: Users, label: 'Clientes' },
     { path: '/admin/envios', icon: Truck, label: 'Envíos' },
+    { path: '/admin/suscripciones', icon: RefreshCw, label: 'Suscripciones' },
+    { path: '/admin/cupones', icon: Ticket, label: 'Cupones' },
   ];
 
   const isActive = (path: string, exact = false) => {
