@@ -1,56 +1,36 @@
-import { Check, Coffee, Truck, CreditCard } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Check, Coffee, Truck, CreditCard, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-const plans = [
-  {
-    id: 'semanal',
-    name: 'Semanal',
-    frequency: 'Cada semana',
-    price: 32000,
-    originalPrice: 35000,
-    discount: '9%',
-    popular: false,
-    features: [
-      'Café fresco cada 7 días',
-      'Envío gratis incluido',
-      'Cancela cuando quieras',
-      'Elige tu presentación favorita',
-    ],
-  },
-  {
-    id: 'quincenal',
-    name: 'Quincenal',
-    frequency: 'Cada 15 días',
-    price: 30000,
-    originalPrice: 35000,
-    discount: '14%',
-    popular: true,
-    features: [
-      'Café fresco cada 15 días',
-      'Envío gratis incluido',
-      'Cancela cuando quieras',
-      'Elige tu presentación favorita',
-      'Acceso a ediciones limitadas',
-    ],
-  },
-  {
-    id: 'mensual',
-    name: 'Mensual',
-    frequency: 'Cada mes',
-    price: 28000,
-    originalPrice: 35000,
-    discount: '20%',
-    popular: false,
-    features: [
-      'Café fresco cada mes',
-      'Envío gratis incluido',
-      'Cancela cuando quieras',
-      'Elige tu presentación favorita',
-      'Kit de barista de regalo',
-    ],
-  },
-];
+interface Plan {
+  id: string;
+  name: string;
+  frequency: string;
+  frequency_label: string;
+  price: number;
+  original_price: number | null;
+  discount: string | null;
+  is_popular: boolean | null;
+  features: string[];
+  sort_order: number | null;
+}
 
 export default function SubscriptionSection() {
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase
+      .from('subscription_plans')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .then(({ data }) => {
+        setPlans((data as Plan[]) || []);
+        setLoading(false);
+      });
+  }, []);
+
   return (
     <section id="suscripciones" className="py-20 bg-gradient-coffee relative overflow-hidden">
       {/* Decorative Elements */}
@@ -78,104 +58,98 @@ export default function SubscriptionSection() {
             <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Coffee className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="font-display text-lg font-semibold text-secondary-foreground mb-2">
-              Elige tu café
-            </h3>
-            <p className="text-secondary-foreground/70 text-sm">
-              Selecciona tu café favorito, presentación y tipo de molido
-            </p>
+            <h3 className="font-display text-lg font-semibold text-secondary-foreground mb-2">Elige tu café</h3>
+            <p className="text-secondary-foreground/70 text-sm">Selecciona tu café favorito, presentación y tipo de molido</p>
           </div>
           <div className="text-center">
             <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <CreditCard className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="font-display text-lg font-semibold text-secondary-foreground mb-2">
-              Cobro automático
-            </h3>
-            <p className="text-secondary-foreground/70 text-sm">
-              Tu tarjeta se cobra automáticamente según tu plan
-            </p>
+            <h3 className="font-display text-lg font-semibold text-secondary-foreground mb-2">Cobro automático</h3>
+            <p className="text-secondary-foreground/70 text-sm">Tu tarjeta se cobra automáticamente según tu plan</p>
           </div>
           <div className="text-center">
             <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Truck className="h-8 w-8 text-primary" />
             </div>
-            <h3 className="font-display text-lg font-semibold text-secondary-foreground mb-2">
-              Recibe en casa
-            </h3>
-            <p className="text-secondary-foreground/70 text-sm">
-              Envío gratis a la puerta de tu casa
-            </p>
+            <h3 className="font-display text-lg font-semibold text-secondary-foreground mb-2">Recibe en casa</h3>
+            <p className="text-secondary-foreground/70 text-sm">Envío gratis a la puerta de tu casa</p>
           </div>
         </div>
 
         {/* Plans */}
-        <div className="grid md:grid-cols-3 gap-8">
-          {plans.map((plan, index) => (
-            <div 
-              key={plan.id}
-              className={`relative rounded-2xl p-8 transition-all duration-300 hover:-translate-y-2 animate-fade-in ${
-                plan.popular 
-                  ? 'bg-primary text-primary-foreground shadow-warm scale-105' 
-                  : 'bg-card text-card-foreground shadow-elevated'
-              }`}
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              {plan.popular && (
-                <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-4 py-1 rounded-full">
-                  Más popular
-                </span>
-              )}
-
-              <div className="text-center mb-6">
-                <h3 className="font-display text-2xl font-bold mb-1">
-                  {plan.name}
-                </h3>
-                <p className={`text-sm ${plan.popular ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                  {plan.frequency}
-                </p>
-              </div>
-
-              <div className="text-center mb-6">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <span className={`text-sm line-through ${plan.popular ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
-                    ${plan.originalPrice.toLocaleString('es-CO')}
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : plans.length === 0 ? (
+          <p className="text-center text-secondary-foreground/60">Próximamente planes de suscripción disponibles.</p>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-8">
+            {plans.map((plan, index) => (
+              <div 
+                key={plan.id}
+                className={`relative rounded-2xl p-8 transition-all duration-300 hover:-translate-y-2 animate-fade-in ${
+                  plan.is_popular 
+                    ? 'bg-primary text-primary-foreground shadow-warm scale-105' 
+                    : 'bg-card text-card-foreground shadow-elevated'
+                }`}
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                {plan.is_popular && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-4 py-1 rounded-full">
+                    Más popular
                   </span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    plan.popular ? 'bg-primary-foreground/20' : 'bg-primary/10 text-primary'
-                  }`}>
-                    -{plan.discount}
-                  </span>
+                )}
+
+                <div className="text-center mb-6">
+                  <h3 className="font-display text-2xl font-bold mb-1">{plan.name}</h3>
+                  <p className={`text-sm ${plan.is_popular ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
+                    {plan.frequency_label}
+                  </p>
                 </div>
-                <div className="flex items-baseline justify-center">
-                  <span className="text-4xl font-display font-bold">
-                    ${plan.price.toLocaleString('es-CO')}
-                  </span>
-                  <span className={`text-sm ml-1 ${plan.popular ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>
-                    /envío
-                  </span>
+
+                <div className="text-center mb-6">
+                  {plan.original_price && (
+                    <div className="flex items-center justify-center gap-2 mb-1">
+                      <span className={`text-sm line-through ${plan.is_popular ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}>
+                        ${plan.original_price.toLocaleString('es-CO')}
+                      </span>
+                      {plan.discount && (
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                          plan.is_popular ? 'bg-primary-foreground/20' : 'bg-primary/10 text-primary'
+                        }`}>
+                          -{plan.discount}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex items-baseline justify-center">
+                    <span className="text-4xl font-display font-bold">${plan.price.toLocaleString('es-CO')}</span>
+                    <span className={`text-sm ml-1 ${plan.is_popular ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}>/envío</span>
+                  </div>
                 </div>
+
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm">
+                      <Check className={`h-5 w-5 flex-shrink-0 ${plan.is_popular ? 'text-primary-foreground' : 'text-primary'}`} />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <button className={`w-full py-3 rounded-full font-semibold transition-all duration-300 ${
+                  plan.is_popular 
+                    ? 'bg-primary-foreground text-primary hover:bg-primary-foreground/90' 
+                    : 'bg-primary text-primary-foreground hover:shadow-warm'
+                }`}>
+                  Suscribirse
+                </button>
               </div>
-
-              <ul className="space-y-3 mb-8">
-                {plan.features.map((feature, i) => (
-                  <li key={i} className="flex items-center gap-3 text-sm">
-                    <Check className={`h-5 w-5 flex-shrink-0 ${plan.popular ? 'text-primary-foreground' : 'text-primary'}`} />
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <button className={`w-full py-3 rounded-full font-semibold transition-all duration-300 ${
-                plan.popular 
-                  ? 'bg-primary-foreground text-primary hover:bg-primary-foreground/90' 
-                  : 'bg-primary text-primary-foreground hover:shadow-warm'
-              }`}>
-                Suscribirse
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

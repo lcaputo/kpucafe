@@ -240,6 +240,7 @@ export type Database = {
           name: string
           origin: string | null
           roast_level: number | null
+          sort_order: number | null
           updated_at: string
         }
         Insert: {
@@ -252,6 +253,7 @@ export type Database = {
           name: string
           origin?: string | null
           roast_level?: number | null
+          sort_order?: number | null
           updated_at?: string
         }
         Update: {
@@ -264,6 +266,7 @@ export type Database = {
           name?: string
           origin?: string | null
           roast_level?: number | null
+          sort_order?: number | null
           updated_at?: string
         }
         Relationships: []
@@ -349,6 +352,54 @@ export type Database = {
           postal_code?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          discount: string | null
+          features: string[] | null
+          frequency: string
+          frequency_label: string
+          id: string
+          is_active: boolean | null
+          is_popular: boolean | null
+          name: string
+          original_price: number | null
+          price: number
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          discount?: string | null
+          features?: string[] | null
+          frequency: string
+          frequency_label: string
+          id?: string
+          is_active?: boolean | null
+          is_popular?: boolean | null
+          name: string
+          original_price?: number | null
+          price: number
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          discount?: string | null
+          features?: string[] | null
+          frequency?: string
+          frequency_label?: string
+          id?: string
+          is_active?: boolean | null
+          is_popular?: boolean | null
+          name?: string
+          original_price?: number | null
+          price?: number
+          sort_order?: number | null
+          updated_at?: string
         }
         Relationships: []
       }
