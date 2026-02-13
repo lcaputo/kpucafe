@@ -115,7 +115,7 @@ export default function Footer() {
           <p className="text-secondary-foreground/50 text-sm">
             © 2025 KPU Café Colombiano. Todos los derechos reservados. 
             <br className="sm:hidden" />
-            Visítanos en: <a href="https://kpucoffe.co" className="text-primary hover:underline">kpucoffe.co</a>
+            Visítanos en: <a className="text-primary hover:underline" href="https://kpucafe.com">kpucoffe.co</a>
           </p>
         </div>
       </div>
