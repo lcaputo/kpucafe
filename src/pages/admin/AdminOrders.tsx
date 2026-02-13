@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Package, Truck, CheckCircle, Clock, Loader2, Search, ChevronDown } from 'lucide-react';
+import { Package, Truck, CheckCircle, Clock, Loader2, Search, ChevronRight, ChevronDown, ChevronUp, MapPin, X, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+
+interface OrderItem {
+  id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+  variant_info: string;
+}
 
 interface Order {
   id: string;
@@ -11,9 +19,14 @@ interface Order {
   shipping_phone: string;
   shipping_address: string;
   shipping_city: string;
+  shipping_department: string | null;
   tracking_number: string | null;
+  carrier: string | null;
+  notes: string | null;
   created_at: string;
 }
+
+const STATUS_FLOW = ['pending', 'paid', 'preparing', 'shipped', 'delivered'];
 
 const statusConfig: Record<string, { label: string; icon: React.ElementType; color: string; bgColor: string }> = {
   pending: { label: 'Pendiente', icon: Clock, color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
@@ -21,8 +34,10 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; col
   preparing: { label: 'Preparando', icon: Package, color: 'text-orange-600', bgColor: 'bg-orange-100' },
   shipped: { label: 'Enviado', icon: Truck, color: 'text-primary', bgColor: 'bg-primary/10' },
   delivered: { label: 'Entregado', icon: CheckCircle, color: 'text-green-600', bgColor: 'bg-green-100' },
-  cancelled: { label: 'Cancelado', icon: Clock, color: 'text-red-600', bgColor: 'bg-red-100' },
+  cancelled: { label: 'Cancelado', icon: X, color: 'text-red-600', bgColor: 'bg-red-100' },
 };
+
+const CARRIERS = ['Servientrega', 'Coordinadora', 'Inter Rapidísimo', 'Envía', 'TCC', 'Deprisa', '472 (4-72)', 'Otro'];
 
 export default function AdminOrders() {
   const { toast } = useToast();
@@ -30,98 +45,120 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [editingTrackingId, setEditingTrackingId] = useState<string | null>(null);
-  const [trackingNumber, setTrackingNumber] = useState('');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [orderItems, setOrderItems] = useState<Record<string, OrderItem[]>>({});
+  const [shippingModal, setShippingModal] = useState<Order | null>(null);
+  const [trackingNum, setTrackingNum] = useState('');
+  const [carrier, setCarrier] = useState('');
+  const [customCarrier, setCustomCarrier] = useState('');
+  const [advancing, setAdvancing] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+  useEffect(() => { fetchOrders(); }, []);
 
   const fetchOrders = async () => {
-    const { data } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false });
-    
-    setOrders(data || []);
+    const { data } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
+    setOrders((data as Order[]) || []);
     setLoading(false);
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({ status: newStatus as 'pending' | 'paid' | 'preparing' | 'shipped' | 'delivered' | 'cancelled' })
-      .eq('id', orderId);
+  const toggleExpand = async (id: string) => {
+    if (expandedId === id) { setExpandedId(null); return; }
+    setExpandedId(id);
+    if (!orderItems[id]) {
+      const { data } = await supabase.from('order_items').select('*').eq('order_id', id);
+      setOrderItems(prev => ({ ...prev, [id]: (data as OrderItem[]) || [] }));
+    }
+  };
+
+  const getNextStatus = (current: string) => {
+    const i = STATUS_FLOW.indexOf(current);
+    return i >= 0 && i < STATUS_FLOW.length - 1 ? STATUS_FLOW[i + 1] : null;
+  };
+
+  const advanceStatus = async (order: Order) => {
+    const next = getNextStatus(order.status);
+    if (!next) return;
+
+    // If advancing to shipped, show modal for tracking
+    if (next === 'shipped') {
+      setShippingModal(order);
+      setTrackingNum(order.tracking_number || '');
+      setCarrier(order.carrier || '');
+      setCustomCarrier('');
+      return;
+    }
+
+    setAdvancing(order.id);
+    const { error } = await supabase.from('orders')
+      .update({ status: next as any })
+      .eq('id', order.id);
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Estado actualizado' });
+      toast({ title: `Pedido avanzado a "${statusConfig[next].label}"` });
       fetchOrders();
     }
+    setAdvancing(null);
   };
 
-  const saveTrackingNumber = async (orderId: string) => {
-    const { error } = await supabase
-      .from('orders')
-      .update({ tracking_number: trackingNumber, status: 'shipped' })
-      .eq('id', orderId);
+  const confirmShipping = async () => {
+    if (!shippingModal) return;
+    const finalCarrier = carrier === 'Otro' ? customCarrier : carrier;
+    if (!trackingNum.trim()) {
+      toast({ title: 'Número de guía requerido', variant: 'destructive' });
+      return;
+    }
+    if (!finalCarrier.trim()) {
+      toast({ title: 'Selecciona un transportista', variant: 'destructive' });
+      return;
+    }
+
+    setAdvancing(shippingModal.id);
+    const { error } = await supabase.from('orders')
+      .update({ status: 'shipped' as any, tracking_number: trackingNum.trim(), carrier: finalCarrier.trim() })
+      .eq('id', shippingModal.id);
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Número de guía guardado' });
-      setEditingTrackingId(null);
-      setTrackingNumber('');
+      toast({ title: 'Pedido marcado como enviado' });
+      setShippingModal(null);
       fetchOrders();
     }
+    setAdvancing(null);
   };
 
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = 
-      order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.shipping_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.shipping_city.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
+  const cancelOrder = async (orderId: string) => {
+    const { error } = await supabase.from('orders').update({ status: 'cancelled' as any }).eq('id', orderId);
+    if (error) toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    else { toast({ title: 'Pedido cancelado' }); fetchOrders(); }
+  };
+
+  const filteredOrders = orders.filter(o => {
+    const matchSearch = o.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.shipping_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      o.shipping_city.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchSearch && (statusFilter === 'all' || o.status === statusFilter);
   });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
     <div>
+      {/* Filters */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <h2 className="font-display text-2xl font-bold text-foreground">Pedidos</h2>
-        
+        <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground">Pedidos</h2>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Buscar pedido..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-64"
-            />
+            <input type="text" placeholder="Buscar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-56" />
           </div>
-          
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="all">Todos los estados</option>
-            {Object.entries(statusConfig).map(([key, value]) => (
-              <option key={key} value={key}>{value.label}</option>
-            ))}
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm">
+            <option value="all">Todos</option>
+            {Object.entries(statusConfig).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
           </select>
         </div>
       </div>
@@ -129,125 +166,182 @@ export default function AdminOrders() {
       {filteredOrders.length === 0 ? (
         <div className="text-center py-16 bg-card rounded-2xl">
           <Package className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-          <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-            No hay pedidos
-          </h3>
-          <p className="text-muted-foreground">
-            {searchTerm || statusFilter !== 'all' 
-              ? 'No se encontraron pedidos con estos filtros' 
-              : 'Los pedidos aparecerán aquí'}
-          </p>
+          <p className="text-muted-foreground">{searchTerm || statusFilter !== 'all' ? 'Sin resultados' : 'Los pedidos aparecerán aquí'}</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {filteredOrders.map(order => {
-            const status = statusConfig[order.status];
+            const status = statusConfig[order.status] || statusConfig.pending;
             const StatusIcon = status.icon;
-            
+            const nextStatus = getNextStatus(order.status);
+            const isExpanded = expandedId === order.id;
+
             return (
-              <div key={order.id} className="bg-card rounded-xl p-6 shadow-soft">
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${status.bgColor} ${status.color}`}>
+              <div key={order.id} className="bg-card rounded-xl shadow-soft overflow-hidden">
+                {/* Header row */}
+                <div className="p-4 sm:p-5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onClick={() => toggleExpand(order.id)}>
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${status.bgColor} ${status.color} whitespace-nowrap`}>
                         <StatusIcon className="h-3 w-3" />
                         {status.label}
                       </span>
-                      <span className="text-sm text-muted-foreground">
-                        #{order.id.slice(0, 8).toUpperCase()}
-                      </span>
-                    </div>
-                    
-                    <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Cliente</p>
-                        <p className="font-medium text-foreground">{order.shipping_name}</p>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-medium text-muted-foreground">#{order.id.slice(0, 8).toUpperCase()}</span>
+                          <span className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}</span>
+                        </div>
+                        <p className="text-sm font-semibold text-foreground truncate">{order.shipping_name}</p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Teléfono</p>
-                        <p className="font-medium text-foreground">{order.shipping_phone}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Ciudad</p>
-                        <p className="font-medium text-foreground">{order.shipping_city}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Total</p>
-                        <p className="font-display font-bold text-foreground">${order.total.toLocaleString('es-CO')}</p>
-                      </div>
+                      <span className="font-display text-sm sm:text-base font-bold text-foreground ml-auto sm:ml-2">${order.total.toLocaleString('es-CO')}</span>
                     </div>
 
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {new Date(order.created_at).toLocaleDateString('es-CO', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                    {/* Tracking number */}
-                    {editingTrackingId === order.id ? (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={trackingNumber}
-                          onChange={(e) => setTrackingNumber(e.target.value)}
-                          placeholder="Número de guía"
-                          className="px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm w-40"
-                        />
-                        <button 
-                          onClick={() => saveTrackingNumber(order.id)}
-                          className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
+                    {/* Action buttons */}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {nextStatus && order.status !== 'cancelled' && (
+                        <button
+                          onClick={() => advanceStatus(order)}
+                          disabled={advancing === order.id}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-xs sm:text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
                         >
-                          Guardar
+                          {advancing === order.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRight className="h-3.5 w-3.5" />}
+                          {statusConfig[nextStatus].label}
                         </button>
-                        <button 
-                          onClick={() => setEditingTrackingId(null)}
-                          className="px-3 py-2 border border-border rounded-lg text-sm"
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    ) : order.tracking_number ? (
-                      <div className="text-sm">
-                        <span className="text-muted-foreground">Guía: </span>
-                        <span className="font-medium text-primary">{order.tracking_number}</span>
-                      </div>
-                    ) : order.status === 'preparing' || order.status === 'paid' ? (
-                      <button 
-                        onClick={() => {
-                          setEditingTrackingId(order.id);
-                          setTrackingNumber(order.tracking_number || '');
-                        }}
-                        className="px-4 py-2 border border-primary text-primary rounded-lg text-sm font-medium hover:bg-primary/10 transition-colors flex items-center gap-2"
-                      >
-                        <Truck className="h-4 w-4" />
-                        Agregar Guía
+                      )}
+                      {order.tracking_number && (
+                        <span className="text-xs text-primary font-medium hidden sm:inline">
+                          {order.carrier && `${order.carrier} · `}{order.tracking_number}
+                        </span>
+                      )}
+                      <button onClick={() => toggleExpand(order.id)} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
+                        {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                       </button>
-                    ) : null}
-
-                    {/* Status dropdown */}
-                    <div className="relative">
-                      <select
-                        value={order.status}
-                        onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                        className="appearance-none px-4 py-2 pr-8 rounded-lg border border-input bg-background text-foreground text-sm cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary"
-                      >
-                        {Object.entries(statusConfig).map(([key, value]) => (
-                          <option key={key} value={key}>{value.label}</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                     </div>
                   </div>
                 </div>
+
+                {/* Expanded detail */}
+                {isExpanded && (
+                  <div className="px-4 sm:px-5 pb-5 border-t border-border pt-4">
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      {/* Shipping */}
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2 flex items-center gap-1">
+                          <MapPin className="h-3 w-3" /> Envío
+                        </p>
+                        <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-0.5">
+                          <p className="font-medium text-foreground">{order.shipping_name}</p>
+                          <p className="text-muted-foreground">{order.shipping_phone}</p>
+                          <p className="text-foreground">{order.shipping_address}</p>
+                          <p className="text-foreground">{order.shipping_city}{order.shipping_department && `, ${order.shipping_department}`}</p>
+                          {order.notes && <p className="text-xs text-muted-foreground italic mt-1">Nota: {order.notes}</p>}
+                        </div>
+                        {order.tracking_number && (
+                          <div className="mt-2 p-2 bg-primary/5 rounded-lg text-sm">
+                            <p className="font-medium text-primary">{order.carrier && `${order.carrier} · `}Guía: {order.tracking_number}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Items */}
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Productos</p>
+                        {orderItems[order.id] ? (
+                          <div className="space-y-2">
+                            {orderItems[order.id].map(item => (
+                              <div key={item.id} className="flex justify-between text-sm bg-muted/50 rounded-lg p-2.5">
+                                <div>
+                                  <p className="font-medium text-foreground">{item.product_name}</p>
+                                  <p className="text-xs text-muted-foreground">{item.variant_info} × {item.quantity}</p>
+                                </div>
+                                <p className="font-semibold text-foreground">${(item.unit_price * item.quantity).toLocaleString('es-CO')}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Status flow */}
+                    <div className="mt-4 flex items-center gap-1 overflow-x-auto pb-1">
+                      {STATUS_FLOW.map((s, i) => {
+                        const cfg = statusConfig[s];
+                        const currentIdx = STATUS_FLOW.indexOf(order.status);
+                        const done = i <= currentIdx;
+                        return (
+                          <div key={s} className="flex items-center gap-1 flex-shrink-0">
+                            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium ${done ? cfg.bgColor + ' ' + cfg.color : 'bg-muted text-muted-foreground'}`}>
+                              {cfg.label}
+                            </span>
+                            {i < STATUS_FLOW.length - 1 && <ChevronRight className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Cancel button */}
+                    {['pending', 'paid'].includes(order.status) && (
+                      <button onClick={() => cancelOrder(order.id)} className="mt-3 text-xs text-red-500 hover:text-red-600 hover:underline">
+                        Cancelar pedido
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Shipping modal */}
+      {shippingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-card rounded-2xl p-6 w-full max-w-md shadow-elevated">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+                <Truck className="h-5 w-5 text-primary" />
+                Datos de Envío
+              </h3>
+              <button onClick={() => setShippingModal(null)} className="p-1 rounded-lg hover:bg-muted"><X className="h-5 w-5" /></button>
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-4">
+              Pedido #{shippingModal.id.slice(0, 8).toUpperCase()} — {shippingModal.shipping_name}
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Transportista *</label>
+                <select value={carrier} onChange={e => setCarrier(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground">
+                  <option value="">Selecciona...</option>
+                  {CARRIERS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+                {carrier === 'Otro' && (
+                  <input type="text" value={customCarrier} onChange={e => setCustomCarrier(e.target.value)}
+                    placeholder="Nombre del transportista" className="w-full mt-2 px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm" />
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1.5">Número de guía *</label>
+                <input type="text" value={trackingNum} onChange={e => setTrackingNum(e.target.value)}
+                  placeholder="Ej: 1234567890" className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground" />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShippingModal(null)} className="flex-1 px-4 py-2.5 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-muted transition-colors">
+                Cancelar
+              </button>
+              <button onClick={confirmShipping} disabled={advancing === shippingModal.id}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                {advancing === shippingModal.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Truck className="h-4 w-4" />}
+                Confirmar Envío
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

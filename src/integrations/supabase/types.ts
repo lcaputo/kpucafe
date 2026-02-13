@@ -74,6 +74,7 @@ export type Database = {
       }
       orders: {
         Row: {
+          carrier: string | null
           created_at: string
           id: string
           notes: string | null
@@ -91,6 +92,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          carrier?: string | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -108,6 +110,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          carrier?: string | null
           created_at?: string
           id?: string
           notes?: string | null
@@ -239,6 +242,51 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          postal_code?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      shipping_addresses: {
+        Row: {
+          address: string
+          city: string
+          created_at: string
+          department: string
+          full_name: string
+          id: string
+          is_default: boolean | null
+          label: string
+          phone: string
+          postal_code: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address: string
+          city: string
+          created_at?: string
+          department: string
+          full_name: string
+          id?: string
+          is_default?: boolean | null
+          label?: string
+          phone: string
+          postal_code?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string
+          city?: string
+          created_at?: string
+          department?: string
+          full_name?: string
+          id?: string
+          is_default?: boolean | null
+          label?: string
+          phone?: string
           postal_code?: string | null
           updated_at?: string
           user_id?: string
