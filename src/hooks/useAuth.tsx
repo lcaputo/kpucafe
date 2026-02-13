@@ -25,33 +25,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
 
+  const fetchUserData = async (userId: string) => {
+    const [rolesRes, profileRes] = await Promise.all([
+      supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'admin')
+        .maybeSingle(),
+      supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle(),
+    ]);
+
+    setIsAdmin(!!rolesRes.data);
+    setProfile(profileRes.data);
+  };
+
   useEffect(() => {
-    // Set up auth state listener first
+    // Set up auth state listener - avoid async Supabase calls inside
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
         
-        if (session?.user) {
-          // Check if user is admin
-          const { data: roles } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', session.user.id)
-            .eq('role', 'admin')
-            .single();
-          
-          setIsAdmin(!!roles);
-          
-          // Fetch profile
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .single();
-          
-          setProfile(profileData);
-        } else {
+        if (!session?.user) {
           setIsAdmin(false);
           setProfile(null);
         }
@@ -60,37 +60,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    // Then get initial session
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        supabase
-          .from('user_roles')
-          .select('role')
-          .eq('user_id', session.user.id)
-          .eq('role', 'admin')
-          .single()
-          .then(({ data: roles }) => {
-            setIsAdmin(!!roles);
-          });
-        
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .single()
-          .then(({ data: profileData }) => {
-            setProfile(profileData);
-          });
+      if (!session?.user) {
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch user data separately to avoid deadlocks
+  useEffect(() => {
+    if (user) {
+      fetchUserData(user.id).then(() => setLoading(false));
+    }
+  }, [user]);
 
   const signUp = async (email: string, password: string, fullName: string) => {
     const { error } = await supabase.auth.signUp({
