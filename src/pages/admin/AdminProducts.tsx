@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Edit, Trash2, Loader2, Coffee, Upload, X, Image, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Coffee, Upload, X, Image, ArrowUp, ArrowDown, GripVertical, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useRef } from 'react';
+import ProductVariantsManager from '@/components/admin/ProductVariantsManager';
 
 interface Product {
   id: string;
@@ -35,6 +36,8 @@ export default function AdminProducts() {
   const [uploading, setUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [variantsProductId, setVariantsProductId] = useState<string | null>(null);
+  const [variantsProductName, setVariantsProductName] = useState('');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -222,6 +225,7 @@ export default function AdminProducts() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => { setVariantsProductId(product.id); setVariantsProductName(product.name); }} className="p-2 text-muted-foreground hover:text-accent-foreground transition-colors" title="Variantes"><Package className="h-4 w-4" /></button>
                   <button onClick={() => openModal(product)} className="p-2 text-muted-foreground hover:text-primary transition-colors"><Edit className="h-4 w-4" /></button>
                   <button onClick={() => deleteProduct(product.id)} className="p-2 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
                 </div>
@@ -289,6 +293,13 @@ export default function AdminProducts() {
             </div>
           </div>
         </>
+      )}
+      {variantsProductId && (
+        <ProductVariantsManager
+          productId={variantsProductId}
+          productName={variantsProductName}
+          onClose={() => { setVariantsProductId(null); fetchProducts(); }}
+        />
       )}
     </div>
   );
