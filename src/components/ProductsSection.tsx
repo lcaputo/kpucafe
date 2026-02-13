@@ -20,6 +20,7 @@ interface DBVariant {
   weight: string;
   grind: string;
   price_modifier: number | null;
+  stock: number | null;
 }
 
 export default function ProductsSection() {
@@ -44,6 +45,12 @@ export default function ProductsSection() {
         });
         const grinds = Array.from(new Set(pVariants.map(v => v.grind)));
 
+        // Build stock map: "weight-grind" -> stock
+        const stockMap: Record<string, number> = {};
+        pVariants.forEach(v => {
+          stockMap[`${v.weight}-${v.grind}`] = v.stock ?? 0;
+        });
+
         return {
           id: p.id,
           name: p.name,
@@ -54,6 +61,7 @@ export default function ProductsSection() {
           grinds: grinds.length > 0 ? grinds : ['Grano', 'Molido'],
           roastLevel: p.roast_level || 3,
           origin: p.origin || '',
+          stockMap,
         };
       });
 

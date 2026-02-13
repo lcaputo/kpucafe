@@ -12,6 +12,7 @@ interface Product {
   grinds: string[];
   roastLevel: number;
   origin: string;
+  stockMap?: Record<string, number>;
 }
 
 interface ProductCardProps {
@@ -25,6 +26,8 @@ export default function ProductCard({ product }: ProductCardProps) {
   const [isAdded, setIsAdded] = useState(false);
 
   const currentPrice = product.basePrice + selectedWeight.priceModifier;
+  const currentStock = product.stockMap?.[`${selectedWeight.value}-${selectedGrind}`] ?? null;
+  const isOutOfStock = currentStock !== null && currentStock <= 0;
 
   const handleAddToCart = () => {
     addItem({
@@ -92,19 +95,25 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="mb-4">
           <span className="text-xs text-muted-foreground block mb-2">Presentación:</span>
           <div className="flex gap-2">
-            {product.weights.map(weight => (
-              <button
-                key={weight.value}
-                onClick={() => setSelectedWeight(weight)}
-                className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
-                  selectedWeight.value === weight.value
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border text-foreground hover:border-primary'
-                }`}
-              >
-                {weight.value}
-              </button>
-            ))}
+            {product.weights.map(weight => {
+              const allGrindsOut = product.grinds.every(g => (product.stockMap?.[`${weight.value}-${g}`] ?? 1) <= 0);
+              return (
+                <button
+                  key={weight.value}
+                  onClick={() => setSelectedWeight(weight)}
+                  disabled={allGrindsOut}
+                  className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                    allGrindsOut
+                      ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
+                      : selectedWeight.value === weight.value
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border text-foreground hover:border-primary'
+                  }`}
+                >
+                  {weight.value}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -112,19 +121,26 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="mb-6">
           <span className="text-xs text-muted-foreground block mb-2">Molido:</span>
           <div className="flex gap-2">
-            {product.grinds.map(grind => (
-              <button
-                key={grind}
-                onClick={() => setSelectedGrind(grind)}
-                className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
-                  selectedGrind === grind
-                    ? 'border-primary bg-primary text-primary-foreground'
-                    : 'border-border text-foreground hover:border-primary'
-                }`}
-              >
-                {grind}
-              </button>
-            ))}
+            {product.grinds.map(grind => {
+              const grindStock = product.stockMap?.[`${selectedWeight.value}-${grind}`] ?? 1;
+              const grindOut = grindStock <= 0;
+              return (
+                <button
+                  key={grind}
+                  onClick={() => setSelectedGrind(grind)}
+                  disabled={grindOut}
+                  className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                    grindOut
+                      ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
+                      : selectedGrind === grind
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border text-foreground hover:border-primary'
+                  }`}
+                >
+                  {grind}
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -139,14 +155,18 @@ export default function ProductCard({ product }: ProductCardProps) {
           
           <button
             onClick={handleAddToCart}
-            disabled={isAdded}
+            disabled={isAdded || isOutOfStock}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold transition-all duration-300 ${
-              isAdded
-                ? 'bg-green-500 text-white'
-                : 'bg-primary text-primary-foreground hover:shadow-warm hover:scale-105'
+              isOutOfStock
+                ? 'bg-muted text-muted-foreground cursor-not-allowed'
+                : isAdded
+                  ? 'bg-green-500 text-white'
+                  : 'bg-primary text-primary-foreground hover:shadow-warm hover:scale-105'
             }`}
           >
-            {isAdded ? (
+            {isOutOfStock ? (
+              'Agotado'
+            ) : isAdded ? (
               <>
                 <Check className="h-5 w-5" />
                 Agregado
