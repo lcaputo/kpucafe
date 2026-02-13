@@ -13,7 +13,8 @@ import {
   X,
   Loader2,
   RefreshCw,
-  Ticket
+  Ticket,
+  CreditCard
 } from 'lucide-react';
 import logoKpu from '@/assets/logo-kpu.png';
 
@@ -76,6 +77,7 @@ export default function AdminDashboard() {
     { path: '/admin/clientes', icon: Users, label: 'Clientes' },
     { path: '/admin/envios', icon: Truck, label: 'Envíos' },
     { path: '/admin/suscripciones', icon: RefreshCw, label: 'Suscripciones' },
+    { path: '/admin/planes', icon: CreditCard, label: 'Planes' },
     { path: '/admin/cupones', icon: Ticket, label: 'Cupones' },
   ];
 

@@ -1,56 +1,69 @@
+import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import ProductCard from './ProductCard';
-import productoCafe from '@/assets/producto-cafe.jpg';
-import productoCafeBeans from '@/assets/producto-cafe-beans.png';
 
-const products = [
-  {
-    id: 'amarillo-exclusivo',
-    name: 'Amarillo Exclusivo',
-    description: 'Desde las montañas del sur de Colombia, este café destaca por sus notas de miel, canela y frutos amarillos.',
-    basePrice: 35000,
-    image: productoCafe,
-    weights: [
-      { value: '250g', priceModifier: 0 },
-      { value: '500g', priceModifier: 25000 },
-      { value: '1kg', priceModifier: 55000 },
-    ],
-    grinds: ['Grano', 'Molido'],
-    roastLevel: 3,
-    origin: 'Huila',
-  },
-  {
-    id: 'tostado-oscuro',
-    name: 'Tostado Intenso',
-    description: 'Un café con cuerpo robusto y notas de chocolate amargo, cacao y nueces tostadas. Perfecto para espresso.',
-    basePrice: 38000,
-    image: productoCafeBeans,
-    weights: [
-      { value: '250g', priceModifier: 0 },
-      { value: '500g', priceModifier: 28000 },
-      { value: '1kg', priceModifier: 60000 },
-    ],
-    grinds: ['Grano', 'Molido'],
-    roastLevel: 5,
-    origin: 'Nariño',
-  },
-  {
-    id: 'suave-aromatico',
-    name: 'Suave Aromático',
-    description: 'Delicado y fragante con notas florales, cítricos suaves y un final dulce. Ideal para métodos filtrados.',
-    basePrice: 32000,
-    image: productoCafe,
-    weights: [
-      { value: '250g', priceModifier: 0 },
-      { value: '500g', priceModifier: 22000 },
-      { value: '1kg', priceModifier: 50000 },
-    ],
-    grinds: ['Grano', 'Molido'],
-    roastLevel: 2,
-    origin: 'Cauca',
-  },
-];
+interface DBProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  base_price: number;
+  image_url: string | null;
+  origin: string | null;
+  roast_level: number | null;
+  sort_order: number | null;
+}
+
+interface DBVariant {
+  id: string;
+  product_id: string;
+  weight: string;
+  grind: string;
+  price_modifier: number | null;
+}
 
 export default function ProductsSection() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      const [productsRes, variantsRes] = await Promise.all([
+        supabase.from('products').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
+        supabase.from('product_variants').select('*').eq('is_active', true),
+      ]);
+
+      const dbProducts = (productsRes.data as DBProduct[]) || [];
+      const dbVariants = (variantsRes.data as DBVariant[]) || [];
+
+      const mapped = dbProducts.map(p => {
+        const pVariants = dbVariants.filter(v => v.product_id === p.id);
+        const weights = Array.from(new Set(pVariants.map(v => v.weight))).map(w => {
+          const variant = pVariants.find(v => v.weight === w);
+          return { value: w, priceModifier: variant?.price_modifier || 0 };
+        });
+        const grinds = Array.from(new Set(pVariants.map(v => v.grind)));
+
+        return {
+          id: p.id,
+          name: p.name,
+          description: p.description || '',
+          basePrice: p.base_price,
+          image: p.image_url || '/placeholder.svg',
+          weights: weights.length > 0 ? weights : [{ value: '250g', priceModifier: 0 }],
+          grinds: grinds.length > 0 ? grinds : ['Grano', 'Molido'],
+          roastLevel: p.roast_level || 3,
+          origin: p.origin || '',
+        };
+      });
+
+      setProducts(mapped);
+      setLoading(false);
+    };
+
+    fetchProducts();
+  }, []);
+
   return (
     <section id="productos" className="py-20 bg-background">
       <div className="container mx-auto px-4">
@@ -68,17 +81,25 @@ export default function ProductsSection() {
         </div>
 
         {/* Products Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {products.map((product, index) => (
-            <div 
-              key={product.id}
-              className="animate-fade-in"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <ProductCard product={product} />
-            </div>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : products.length === 0 ? (
+          <p className="text-center text-muted-foreground">Próximamente productos disponibles.</p>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {products.map((product, index) => (
+              <div 
+                key={product.id}
+                className="animate-fade-in"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
+                <ProductCard product={product} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
