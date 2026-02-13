@@ -72,7 +72,7 @@ export default function Footer() {
               <li className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
                 <span className="text-secondary-foreground/70 text-sm">
-                  Huila, Colombia
+                  Barranquilla, Colombia
                 </span>
               </li>
             </ul>
