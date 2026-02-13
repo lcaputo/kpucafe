@@ -111,13 +111,13 @@ export default function Footer() {
         </div>
 
         {/* Bottom */}
-        <div className="border-t border-secondary-foreground/10 mt-12 pt-8 text-center">
-          <p className="text-secondary-foreground/50 text-sm">
-            © 2025 KPU Café Colombiano. Todos los derechos reservados. 
-            <br className="sm:hidden" />
-            Visítanos en: <a className="text-primary hover:underline" href="https://kpucafe.com">kpucoffe.co</a>
-          </p>
-        </div>
+        
+
+
+
+
+
+
       </div>
     </footer>);
 
