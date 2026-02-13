@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Edit, Trash2, Loader2, Coffee, Upload, X, Image, ArrowUp, ArrowDown, GripVertical, Package } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useRef } from 'react';
 import ProductVariantsManager from '@/components/admin/ProductVariantsManager';
@@ -221,7 +222,16 @@ export default function AdminProducts() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Switch
+                    checked={product.is_active}
+                    onCheckedChange={async (checked) => {
+                      await supabase.from('products').update({ is_active: checked } as any).eq('id', product.id);
+                      setProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_active: checked } : p));
+                      toast({ title: checked ? 'Producto activado' : 'Producto desactivado' });
+                    }}
+                    title={product.is_active ? 'Desactivar' : 'Activar'}
+                  />
                   <button onClick={() => { setVariantsProductId(product.id); setVariantsProductName(product.name); }} className="p-2 text-muted-foreground hover:text-accent-foreground transition-colors" title="Variantes"><Package className="h-4 w-4" /></button>
                   <button onClick={() => openModal(product)} className="p-2 text-muted-foreground hover:text-primary transition-colors"><Edit className="h-4 w-4" /></button>
                   <button onClick={() => deleteProduct(product.id)} className="p-2 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
