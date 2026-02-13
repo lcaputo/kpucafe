@@ -42,7 +42,6 @@ export default function AdminProducts() {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    base_price: 0,
     image_url: '',
     origin: '',
     roast_level: 3,
@@ -116,16 +115,16 @@ export default function AdminProducts() {
       if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); }
       else { toast({ title: 'Producto actualizado' }); fetchProducts(); closeModal(); }
     } else {
-      const { data, error } = await supabase.from('products').insert({ ...formData, sort_order: products.length } as any).select().single();
+      const { data, error } = await supabase.from('products').insert({ ...formData, base_price: 0, sort_order: products.length } as any).select().single();
       if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); }
       else {
         await supabase.from('product_variants').insert([
-          { product_id: data.id, weight: '250g', grind: 'Grano', price_modifier: 0 },
-          { product_id: data.id, weight: '250g', grind: 'Molido', price_modifier: 0 },
-          { product_id: data.id, weight: '500g', grind: 'Grano', price_modifier: 25000 },
-          { product_id: data.id, weight: '500g', grind: 'Molido', price_modifier: 25000 },
-          { product_id: data.id, weight: '1kg', grind: 'Grano', price_modifier: 55000 },
-          { product_id: data.id, weight: '1kg', grind: 'Molido', price_modifier: 55000 },
+          { product_id: data.id, weight: '250g', grind: 'Grano', price_modifier: 35000 },
+          { product_id: data.id, weight: '250g', grind: 'Molido', price_modifier: 35000 },
+          { product_id: data.id, weight: '500g', grind: 'Grano', price_modifier: 60000 },
+          { product_id: data.id, weight: '500g', grind: 'Molido', price_modifier: 60000 },
+          { product_id: data.id, weight: '1kg', grind: 'Grano', price_modifier: 90000 },
+          { product_id: data.id, weight: '1kg', grind: 'Molido', price_modifier: 90000 },
         ]);
         toast({ title: 'Producto creado' }); fetchProducts(); closeModal();
       }
@@ -142,11 +141,11 @@ export default function AdminProducts() {
   const openModal = (product?: Product) => {
     if (product) {
       setEditingProduct(product);
-      setFormData({ name: product.name, description: product.description || '', base_price: product.base_price, image_url: product.image_url || '', origin: product.origin || '', roast_level: product.roast_level || 3 });
+      setFormData({ name: product.name, description: product.description || '', image_url: product.image_url || '', origin: product.origin || '', roast_level: product.roast_level || 3 });
       setImagePreview(product.image_url || null);
     } else {
       setEditingProduct(null);
-      setFormData({ name: '', description: '', base_price: 35000, image_url: '', origin: '', roast_level: 3 });
+      setFormData({ name: '', description: '', image_url: '', origin: '', roast_level: 3 });
       setImagePreview(null);
     }
     setIsModalOpen(true);
@@ -217,9 +216,7 @@ export default function AdminProducts() {
                   <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                     <span>{product.origin || 'Sin origen'}</span>
                     <span>•</span>
-                    <span>${product.base_price.toLocaleString('es-CO')}</span>
-                    <span className="hidden sm:inline">•</span>
-                    <span className="hidden sm:inline">{productVariants.length} variantes</span>
+                    <span>{productVariants.length} variantes</span>
                   </div>
                 </div>
 
@@ -270,15 +267,9 @@ export default function AdminProducts() {
                   <label className="block text-sm font-medium text-foreground mb-1">Descripción</label>
                   <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={3} className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Precio Base (COP)</label>
-                    <input type="number" value={formData.base_price} onChange={e => setFormData({ ...formData, base_price: parseInt(e.target.value) })} required className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Origen</label>
-                    <input type="text" value={formData.origin} onChange={e => setFormData({ ...formData, origin: e.target.value })} placeholder="Huila, Nariño..." className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Origen</label>
+                  <input type="text" value={formData.origin} onChange={e => setFormData({ ...formData, origin: e.target.value })} placeholder="Huila, Nariño..." className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Nivel de Tostado (1-5)</label>

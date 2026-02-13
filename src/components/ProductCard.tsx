@@ -6,13 +6,13 @@ interface Product {
   id: string;
   name: string;
   description: string;
-  basePrice: number;
   image: string;
-  weights: { value: string; priceModifier: number }[];
+  weights: { value: string }[];
   grinds: string[];
   roastLevel: number;
   origin: string;
   stockMap?: Record<string, number>;
+  priceMap?: Record<string, number>;
 }
 
 interface ProductCardProps {
@@ -21,11 +21,11 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem, setIsCartOpen } = useCart();
-  const [selectedWeight, setSelectedWeight] = useState(product.weights[0]);
   const [selectedGrind, setSelectedGrind] = useState(product.grinds[0]);
+  const [selectedWeight, setSelectedWeight] = useState(product.weights[0]);
   const [isAdded, setIsAdded] = useState(false);
 
-  const currentPrice = product.basePrice + selectedWeight.priceModifier;
+  const currentPrice = product.priceMap?.[`${selectedWeight.value}-${selectedGrind}`] ?? 0;
   const currentStock = product.stockMap?.[`${selectedWeight.value}-${selectedGrind}`] ?? null;
   const isOutOfStock = currentStock !== null && currentStock <= 0;
 
@@ -91,46 +91,19 @@ export default function ProductCard({ product }: ProductCardProps) {
           </span>
         </div>
 
-        {/* Weight Selection */}
+        {/* Grind Selection (FIRST) */}
         <div className="mb-4">
-          <span className="text-xs text-muted-foreground block mb-2">Presentación:</span>
-          <div className="flex gap-2">
-            {product.weights.map(weight => {
-              const allGrindsOut = product.grinds.every(g => (product.stockMap?.[`${weight.value}-${g}`] ?? 1) <= 0);
-              return (
-                <button
-                  key={weight.value}
-                  onClick={() => setSelectedWeight(weight)}
-                  disabled={allGrindsOut}
-                  className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
-                    allGrindsOut
-                      ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
-                      : selectedWeight.value === weight.value
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border text-foreground hover:border-primary'
-                  }`}
-                >
-                  {weight.value}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Grind Selection */}
-        <div className="mb-6">
-          <span className="text-xs text-muted-foreground block mb-2">Molido:</span>
+          <span className="text-xs text-muted-foreground block mb-2">Tipo:</span>
           <div className="flex gap-2">
             {product.grinds.map(grind => {
-              const grindStock = product.stockMap?.[`${selectedWeight.value}-${grind}`] ?? 1;
-              const grindOut = grindStock <= 0;
+              const allWeightsOut = product.weights.every(w => (product.stockMap?.[`${w.value}-${grind}`] ?? 1) <= 0);
               return (
                 <button
                   key={grind}
                   onClick={() => setSelectedGrind(grind)}
-                  disabled={grindOut}
+                  disabled={allWeightsOut}
                   className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
-                    grindOut
+                    allWeightsOut
                       ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
                       : selectedGrind === grind
                         ? 'border-primary bg-primary text-primary-foreground'
@@ -138,6 +111,33 @@ export default function ProductCard({ product }: ProductCardProps) {
                   }`}
                 >
                   {grind}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Weight Selection (SECOND) */}
+        <div className="mb-6">
+          <span className="text-xs text-muted-foreground block mb-2">Presentación:</span>
+          <div className="flex gap-2">
+            {product.weights.map(weight => {
+              const weightStock = product.stockMap?.[`${weight.value}-${selectedGrind}`] ?? 1;
+              const weightOut = weightStock <= 0;
+              return (
+                <button
+                  key={weight.value}
+                  onClick={() => setSelectedWeight(weight)}
+                  disabled={weightOut}
+                  className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                    weightOut
+                      ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
+                      : selectedWeight.value === weight.value
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border text-foreground hover:border-primary'
+                  }`}
+                >
+                  {weight.value}
                 </button>
               );
             })}
