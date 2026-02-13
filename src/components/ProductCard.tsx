@@ -21,11 +21,23 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem, setIsCartOpen } = useCart();
-  const [selectedGrind, setSelectedGrind] = useState(product.grinds[0]);
-  const [selectedWeight, setSelectedWeight] = useState(product.weights[0]);
-  const [isAdded, setIsAdded] = useState(false);
-
   const getStock = (w: string, g: string) => product.stockMap?.[`${w}-${g}`] ?? 1;
+
+  const findInitialSelection = () => {
+    for (const grind of product.grinds) {
+      for (const weight of product.weights) {
+        if (getStock(weight.value, grind) > 0) {
+          return { grind, weight };
+        }
+      }
+    }
+    return { grind: product.grinds[0], weight: product.weights[0] };
+  };
+
+  const initial = findInitialSelection();
+  const [selectedGrind, setSelectedGrind] = useState(initial.grind);
+  const [selectedWeight, setSelectedWeight] = useState(initial.weight);
+  const [isAdded, setIsAdded] = useState(false);
 
   const handleGrindChange = (grind: string) => {
     setSelectedGrind(grind);
