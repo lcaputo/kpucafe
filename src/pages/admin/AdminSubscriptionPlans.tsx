@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Plus, Edit, Trash2, Loader2, Ticket, ArrowUp, ArrowDown, Star } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 
 interface Plan {
@@ -173,7 +174,16 @@ export default function AdminSubscriptionPlans() {
                 <p className="text-xs text-muted-foreground mt-1">{plan.features.length} características</p>
               </div>
 
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Switch
+                  checked={plan.is_active !== false}
+                  onCheckedChange={async (checked) => {
+                    await supabase.from('subscription_plans').update({ is_active: checked } as any).eq('id', plan.id);
+                    setPlans(prev => prev.map(p => p.id === plan.id ? { ...p, is_active: checked } : p));
+                    toast({ title: checked ? 'Plan activado' : 'Plan ocultado de la landing' });
+                  }}
+                  title={plan.is_active !== false ? 'Ocultar de landing' : 'Mostrar en landing'}
+                />
                 <button onClick={() => openModal(plan)} className="p-2 text-muted-foreground hover:text-primary transition-colors"><Edit className="h-4 w-4" /></button>
                 <button onClick={() => deletePlan(plan.id)} className="p-2 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
               </div>
