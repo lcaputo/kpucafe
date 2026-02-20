@@ -498,20 +498,16 @@ export default function Checkout() {
 
           {/* Steps indicator */}
           <div className="flex items-center gap-2 mb-8">
-            {needsAccount && (
-              <>
-                <StepBadge number={1} label="Cuenta" active={step === "account"} done={step !== "account"} />
-                <div className="h-px flex-1 bg-border" />
-              </>
-            )}
+            <StepBadge number={1} label="Cuenta" active={step === "account"} done={!needsAccount || step !== "account"} />
+            <div className="h-px flex-1 bg-border" />
             <StepBadge
-              number={needsAccount ? 2 : 1}
+              number={2}
               label="Envío"
               active={step === "shipping"}
               done={step === "review"}
             />
             <div className="h-px flex-1 bg-border" />
-            <StepBadge number={needsAccount ? 3 : 2} label="Pago" active={step === "review"} done={false} />
+            <StepBadge number={3} label="Pago" active={step === "review"} done={false} />
           </div>
 
           <div className="grid lg:grid-cols-3 gap-6 xl:gap-8">
