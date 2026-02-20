@@ -91,11 +91,13 @@ export default function ProductCard({ product }: ProductCardProps) {
           alt={product.name}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
-        <div className="absolute top-4 right-4">
-          <span className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">
-            {product.origin}
-          </span>
-        </div>
+        {product.origin && (
+          <div className="absolute top-4 right-4">
+            <span className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">
+              {product.origin}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
