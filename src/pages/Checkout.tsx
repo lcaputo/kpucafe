@@ -13,6 +13,8 @@ import {
   User,
   Ticket,
   X,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -107,6 +109,7 @@ export default function Checkout() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [showNewAddress, setShowNewAddress] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [saveAddress, setSaveAddress] = useState(true);
   const [addressLabel, setAddressLabel] = useState("Casa");
   const [step, setStep] = useState<"account" | "shipping" | "review">("shipping");
@@ -180,6 +183,7 @@ export default function Checkout() {
   const selectAddress = (addr: SavedAddress) => {
     setSelectedAddressId(addr.id);
     setShowNewAddress(false);
+    setEditingAddressId(null);
     setForm((prev) => ({
       ...prev,
       fullName: addr.full_name,
@@ -189,6 +193,61 @@ export default function Checkout() {
       department: addr.department,
       postalCode: addr.postal_code || "",
     }));
+  };
+
+  const startEditAddress = (addr: SavedAddress) => {
+    setEditingAddressId(addr.id);
+    setSelectedAddressId(addr.id);
+    setShowNewAddress(false);
+    setAddressLabel(addr.label);
+    setForm((prev) => ({
+      ...prev,
+      fullName: addr.full_name,
+      phone: addr.phone,
+      address: addr.address,
+      city: addr.city,
+      department: addr.department,
+      postalCode: addr.postal_code || "",
+    }));
+  };
+
+  const saveEditAddress = async () => {
+    if (!validateForm() || !editingAddressId) return;
+    const { error } = await supabase
+      .from("shipping_addresses")
+      .update({
+        label: addressLabel,
+        full_name: form.fullName,
+        phone: form.phone,
+        address: form.address,
+        city: form.city,
+        department: form.department,
+        postal_code: form.postalCode || null,
+      })
+      .eq("id", editingAddressId);
+    if (!error) {
+      toast({ title: "Dirección actualizada" });
+      setEditingAddressId(null);
+      fetchSavedAddresses();
+    }
+  };
+
+  const deleteAddress = async (id: string) => {
+    const { error } = await supabase.from("shipping_addresses").delete().eq("id", id);
+    if (!error) {
+      toast({ title: "Dirección eliminada" });
+      const remaining = savedAddresses.filter((a) => a.id !== id);
+      setSavedAddresses(remaining);
+      if (selectedAddressId === id) {
+        if (remaining.length > 0) {
+          selectAddress(remaining[0]);
+        } else {
+          setSelectedAddressId(null);
+          setShowNewAddress(true);
+          setForm((prev) => ({ ...prev, address: "", city: "", department: "", postalCode: "" }));
+        }
+      }
+    }
   };
 
   useEffect(() => {
@@ -526,34 +585,56 @@ export default function Checkout() {
                     <h2 className="font-display text-lg sm:text-xl font-bold text-card-foreground">Datos de Envío</h2>
                   </div>
 
-                  {/* Saved addresses */}
-                  {savedAddresses.length > 0 && (
-                    <div className="mb-6">
-                      <p className="text-sm font-medium text-foreground mb-3">Direcciones guardadas</p>
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        {savedAddresses.map((addr) => (
-                          <button
+                  {/* Saved addresses - compact list */}
+                  {savedAddresses.length > 0 && !editingAddressId && (
+                    <div className="mb-5 space-y-2">
+                      <p className="text-sm font-medium text-foreground mb-2">Direcciones guardadas</p>
+                      {savedAddresses.map((addr) => {
+                        const isSelected = selectedAddressId === addr.id && !showNewAddress;
+                        return (
+                          <div
                             key={addr.id}
                             onClick={() => selectAddress(addr)}
-                            className={`text-left p-4 rounded-xl border-2 transition-all ${
-                              selectedAddressId === addr.id && !showNewAddress
+                            className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                              isSelected
                                 ? "border-primary bg-primary/5"
                                 : "border-border hover:border-primary/40"
                             }`}
                           >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-semibold text-foreground">{addr.label}</span>
-                              {selectedAddressId === addr.id && !showNewAddress && (
-                                <Check className="h-4 w-4 text-primary" />
-                              )}
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                              isSelected ? "border-primary bg-primary" : "border-muted-foreground/40"
+                            }`}>
+                              {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                             </div>
-                            <p className="text-sm text-muted-foreground">{addr.full_name}</p>
-                            <p className="text-xs text-muted-foreground truncate">{addr.address}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {addr.city}, {addr.department}
-                            </p>
-                          </button>
-                        ))}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-foreground">{addr.label}</span>
+                                <span className="text-xs text-muted-foreground">· {addr.full_name}</span>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {addr.address}, {addr.city}, {addr.department}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); startEditAddress(addr); }}
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="Editar"
+                              >
+                                <Pencil className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); deleteAddress(addr.id); }}
+                                className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                title="Eliminar"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {!showNewAddress && (
                         <button
                           onClick={() => {
                             setShowNewAddress(true);
@@ -564,158 +645,168 @@ export default function Checkout() {
                               city: "",
                               department: "",
                               postalCode: "",
-                              fullName: prev.fullName,
-                              phone: prev.phone,
                             }));
+                            setAddressLabel("Casa");
                           }}
-                          className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 border-dashed transition-all ${
-                            showNewAddress ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
-                          }`}
+                          className="flex items-center gap-2 w-full p-3 rounded-xl border-2 border-dashed border-border hover:border-primary/40 transition-all text-sm text-muted-foreground hover:text-foreground"
                         >
-                          <Plus className="h-5 w-5 text-muted-foreground mb-1" />
-                          <span className="text-sm text-muted-foreground">Nueva dirección</span>
+                          <Plus className="h-4 w-4" />
+                          Agregar nueva dirección
                         </button>
-                      </div>
+                      )}
                     </div>
                   )}
 
-                  {/* New address form or editing */}
-                  {(showNewAddress || savedAddresses.length === 0) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="sm:col-span-2">
-                        <label className="block text-sm font-medium text-foreground mb-1.5">Nombre completo *</label>
-                        <input
-                          type="text"
-                          name="fullName"
-                          value={form.fullName}
-                          onChange={handleInputChange}
-                          className={inputClass("fullName")}
-                          placeholder="Nombre del destinatario"
-                        />
-                        {errors.fullName && <ErrorMsg msg={errors.fullName} />}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-1.5">Teléfono *</label>
-                        <input
-                          type="tel"
-                          name="phone"
-                          value={form.phone}
-                          onChange={handleInputChange}
-                          className={inputClass("phone")}
-                          placeholder="300 123 4567"
-                        />
-                        {errors.phone && <ErrorMsg msg={errors.phone} />}
-                      </div>
-                      {!user && (
+                  {/* Address form - for new address, editing, or no saved addresses */}
+                  {(showNewAddress || editingAddressId || savedAddresses.length === 0) && (
+                    <div className="space-y-4">
+                      {editingAddressId && (
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-medium text-foreground">Editando dirección</p>
+                          <button
+                            onClick={() => {
+                              setEditingAddressId(null);
+                              const addr = savedAddresses.find(a => a.id === selectedAddressId);
+                              if (addr) selectAddress(addr);
+                            }}
+                            className="text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      )}
+
+                      {(editingAddressId || (showNewAddress && saveAddress && user)) && (
                         <div>
-                          <label className="block text-sm font-medium text-foreground mb-1.5">Email *</label>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Etiqueta</label>
                           <input
-                            type="email"
-                            name="email"
-                            value={form.email}
-                            onChange={handleInputChange}
-                            className={inputClass("email")}
-                            placeholder="tu@email.com"
+                            type="text"
+                            value={addressLabel}
+                            onChange={(e) => setAddressLabel(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:ring-2 focus:ring-primary focus:border-transparent"
+                            placeholder="Ej: Casa, Oficina"
                           />
-                          {errors.email && <ErrorMsg msg={errors.email} />}
                         </div>
                       )}
-                      <div className="sm:col-span-2">
-                        <label className="block text-sm font-medium text-foreground mb-1.5">Dirección *</label>
-                        <input
-                          type="text"
-                          name="address"
-                          value={form.address}
-                          onChange={handleInputChange}
-                          className={inputClass("address")}
-                          placeholder="Calle, número, apartamento, etc."
-                        />
-                        {errors.address && <ErrorMsg msg={errors.address} />}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-1.5">Departamento *</label>
-                        <select
-                          name="department"
-                          value={form.department}
-                          onChange={handleInputChange}
-                          className={inputClass("department")}
-                        >
-                          <option value="">Selecciona...</option>
-                          {DEPARTMENTS.map((d) => (
-                            <option key={d} value={d}>
-                              {d}
-                            </option>
-                          ))}
-                        </select>
-                        {errors.department && <ErrorMsg msg={errors.department} />}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-1.5">Ciudad *</label>
-                        <input
-                          type="text"
-                          name="city"
-                          value={form.city}
-                          onChange={handleInputChange}
-                          className={inputClass("city")}
-                          placeholder="Ciudad"
-                        />
-                        {errors.city && <ErrorMsg msg={errors.city} />}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-1.5">Código Postal</label>
-                        <input
-                          type="text"
-                          name="postalCode"
-                          value={form.postalCode}
-                          onChange={handleInputChange}
-                          className={inputClass("postalCode")}
-                          placeholder="Opcional"
-                        />
-                      </div>
 
-                      {user && (
-                        <div className="sm:col-span-2 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                          <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={saveAddress}
-                              onChange={(e) => setSaveAddress(e.target.checked)}
-                              className="rounded border-border"
-                            />
-                            Guardar dirección
-                          </label>
-                          {saveAddress && (
-                            <input
-                              type="text"
-                              value={addressLabel}
-                              onChange={(e) => setAddressLabel(e.target.value)}
-                              className="px-3 py-1.5 rounded-lg border border-border bg-background text-foreground text-sm w-32"
-                              placeholder="Ej: Casa, Oficina"
-                            />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Selected address summary (not editing) */}
-                  {!showNewAddress && selectedAddressId && savedAddresses.length > 0 && (
-                    <div className="mt-4 p-4 bg-muted/50 rounded-xl">
-                      <div className="flex items-start gap-2">
-                        <MapPin className="h-4 w-4 text-primary mt-0.5" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <p className="font-medium text-foreground">{form.fullName}</p>
-                          <p className="text-sm text-muted-foreground">{form.phone}</p>
-                          <p className="text-sm text-foreground">{form.address}</p>
-                          <p className="text-sm text-foreground">
-                            {form.city}, {form.department}
-                          </p>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Nombre completo *</label>
+                          <input
+                            type="text"
+                            name="fullName"
+                            value={form.fullName}
+                            onChange={handleInputChange}
+                            className={inputClass("fullName")}
+                            placeholder="Nombre del destinatario"
+                          />
+                          {errors.fullName && <ErrorMsg msg={errors.fullName} />}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Teléfono *</label>
+                          <input
+                            type="tel"
+                            name="phone"
+                            value={form.phone}
+                            onChange={handleInputChange}
+                            className={inputClass("phone")}
+                            placeholder="300 123 4567"
+                          />
+                          {errors.phone && <ErrorMsg msg={errors.phone} />}
+                        </div>
+                        {!user && (
+                          <div className="sm:col-span-2">
+                            <label className="block text-sm font-medium text-foreground mb-1.5">Email *</label>
+                            <input
+                              type="email"
+                              name="email"
+                              value={form.email}
+                              onChange={handleInputChange}
+                              className={inputClass("email")}
+                              placeholder="tu@email.com"
+                            />
+                            {errors.email && <ErrorMsg msg={errors.email} />}
+                          </div>
+                        )}
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Dirección *</label>
+                          <input
+                            type="text"
+                            name="address"
+                            value={form.address}
+                            onChange={handleInputChange}
+                            className={inputClass("address")}
+                            placeholder="Calle, número, apartamento, etc."
+                          />
+                          {errors.address && <ErrorMsg msg={errors.address} />}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Departamento *</label>
+                          <select
+                            name="department"
+                            value={form.department}
+                            onChange={handleInputChange}
+                            className={inputClass("department")}
+                          >
+                            <option value="">Selecciona...</option>
+                            {DEPARTMENTS.map((d) => (
+                              <option key={d} value={d}>
+                                {d}
+                              </option>
+                            ))}
+                          </select>
+                          {errors.department && <ErrorMsg msg={errors.department} />}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Ciudad *</label>
+                          <input
+                            type="text"
+                            name="city"
+                            value={form.city}
+                            onChange={handleInputChange}
+                            className={inputClass("city")}
+                            placeholder="Ciudad"
+                          />
+                          {errors.city && <ErrorMsg msg={errors.city} />}
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Código Postal</label>
+                          <input
+                            type="text"
+                            name="postalCode"
+                            value={form.postalCode}
+                            onChange={handleInputChange}
+                            className={inputClass("postalCode")}
+                            placeholder="Opcional"
+                          />
                         </div>
                       </div>
+
+                      {user && showNewAddress && !editingAddressId && (
+                        <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={saveAddress}
+                            onChange={(e) => setSaveAddress(e.target.checked)}
+                            className="rounded border-border"
+                          />
+                          Guardar esta dirección
+                        </label>
+                      )}
+
+                      {editingAddressId && (
+                        <button
+                          onClick={saveEditAddress}
+                          className="w-full btn-kpu flex items-center justify-center gap-2"
+                        >
+                          <Check className="h-4 w-4" />
+                          Guardar cambios
+                        </button>
+                      )}
                     </div>
                   )}
 
-                  <div className="sm:col-span-2 mt-4">
+                  <div className="mt-4">
                     <label className="block text-sm font-medium text-foreground mb-1.5">Notas adicionales</label>
                     <textarea
                       name="notes"
@@ -727,14 +818,16 @@ export default function Checkout() {
                     />
                   </div>
 
-                  <button
-                    onClick={() => {
-                      if (validateForm()) setStep("review");
-                    }}
-                    className="w-full mt-6 btn-kpu flex items-center justify-center gap-2"
-                  >
-                    Revisar y Pagar
-                  </button>
+                  {!editingAddressId && (
+                    <button
+                      onClick={() => {
+                        if (validateForm()) setStep("review");
+                      }}
+                      className="w-full mt-5 btn-kpu flex items-center justify-center gap-2"
+                    >
+                      Revisar y Pagar
+                    </button>
+                  )}
                 </div>
               )}
 
