@@ -13,6 +13,8 @@ interface Product {
   origin: string;
   stockMap?: Record<string, number>;
   priceMap?: Record<string, number>;
+  hasVariants?: boolean;
+  basePrice?: number;
 }
 
 interface ProductCardProps {
@@ -21,6 +23,8 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem, setIsCartOpen } = useCart();
+  const hasVariants = product.hasVariants !== false;
+
   const getStock = (w: string, g: string) => product.stockMap?.[`${w}-${g}`] ?? 1;
 
   const findInitialSelection = () => {
@@ -41,7 +45,6 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   const handleGrindChange = (grind: string) => {
     setSelectedGrind(grind);
-    // If current weight has no stock for this grind, auto-select first available weight
     if (getStock(selectedWeight.value, grind) <= 0) {
       const available = product.weights.find(w => getStock(w.value, grind) > 0);
       if (available) setSelectedWeight(available);
@@ -50,27 +53,28 @@ export default function ProductCard({ product }: ProductCardProps) {
 
   const handleWeightChange = (weight: typeof product.weights[0]) => {
     setSelectedWeight(weight);
-    // If current grind has no stock for this weight, auto-select first available grind
     if (getStock(weight.value, selectedGrind) <= 0) {
       const available = product.grinds.find(g => getStock(weight.value, g) > 0);
       if (available) setSelectedGrind(available);
     }
   };
 
-  const currentPrice = product.priceMap?.[`${selectedWeight.value}-${selectedGrind}`] ?? 0;
-  const currentStock = getStock(selectedWeight.value, selectedGrind);
+  const currentPrice = hasVariants
+    ? (product.priceMap?.[`${selectedWeight.value}-${selectedGrind}`] ?? 0)
+    : (product.basePrice ?? 0);
+  const currentStock = hasVariants ? getStock(selectedWeight.value, selectedGrind) : 1;
   const isOutOfStock = currentStock <= 0;
 
   const handleAddToCart = () => {
     addItem({
-      id: `${product.id}-${selectedWeight.value}-${selectedGrind}`,
+      id: hasVariants ? `${product.id}-${selectedWeight.value}-${selectedGrind}` : product.id,
       name: product.name,
       price: currentPrice,
       image: product.image,
-      weight: selectedWeight.value,
-      grind: selectedGrind,
+      weight: hasVariants ? selectedWeight.value : 'Unidad',
+      grind: hasVariants ? selectedGrind : '-',
     });
-    
+
     setIsAdded(true);
     setTimeout(() => {
       setIsAdded(false);
@@ -103,77 +107,86 @@ export default function ProductCard({ product }: ProductCardProps) {
           {product.description}
         </p>
 
-        {/* Roast Level */}
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-xs text-muted-foreground">Tostado:</span>
-          <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map(level => (
-              <div 
-                key={level}
-                className={`w-3 h-3 rounded-full ${
-                  level <= product.roastLevel 
-                    ? 'bg-primary' 
-                    : 'bg-muted-foreground/30'
-                }`}
-              />
-            ))}
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {product.roastLevel <= 2 ? 'Suave' : product.roastLevel <= 4 ? 'Medio' : 'Fuerte'}
-          </span>
-        </div>
-
-        {/* Grind Selection (FIRST) */}
-        <div className="mb-4">
-          <span className="text-xs text-muted-foreground block mb-2">Tipo:</span>
-          <div className="flex gap-2">
-            {product.grinds.map(grind => {
-              const allWeightsOut = product.weights.every(w => getStock(w.value, grind) <= 0);
-              return (
-                <button
-                  key={grind}
-                  onClick={() => handleGrindChange(grind)}
-                  disabled={allWeightsOut}
-                  className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
-                    allWeightsOut
-                      ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
-                      : selectedGrind === grind
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border text-foreground hover:border-primary'
+        {/* Roast Level — only for coffee with variants */}
+        {hasVariants && (
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xs text-muted-foreground">Tostado:</span>
+            <div className="flex gap-1">
+              {[1, 2, 3, 4, 5].map(level => (
+                <div
+                  key={level}
+                  className={`w-3 h-3 rounded-full ${
+                    level <= product.roastLevel
+                      ? 'bg-primary'
+                      : 'bg-muted-foreground/30'
                   }`}
-                >
-                  {grind}
-                </button>
-              );
-            })}
+                />
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {product.roastLevel <= 2 ? 'Suave' : product.roastLevel <= 4 ? 'Medio' : 'Fuerte'}
+            </span>
           </div>
-        </div>
+        )}
 
-        {/* Weight Selection (SECOND) */}
-        <div className="mb-6">
-          <span className="text-xs text-muted-foreground block mb-2">Presentación:</span>
-          <div className="flex gap-2">
-            {product.weights.map(weight => {
-              const weightOut = getStock(weight.value, selectedGrind) <= 0;
-              return (
-                <button
-                  key={weight.value}
-                  onClick={() => handleWeightChange(weight)}
-                  disabled={weightOut}
-                  className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
-                    weightOut
-                      ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
-                      : selectedWeight.value === weight.value
-                        ? 'border-primary bg-primary text-primary-foreground'
-                        : 'border-border text-foreground hover:border-primary'
-                  }`}
-                >
-                  {weight.value}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {hasVariants && (
+          <>
+            {/* Grind Selection */}
+            <div className="mb-4">
+              <span className="text-xs text-muted-foreground block mb-2">Tipo:</span>
+              <div className="flex gap-2">
+                {product.grinds.map(grind => {
+                  const allWeightsOut = product.weights.every(w => getStock(w.value, grind) <= 0);
+                  return (
+                    <button
+                      key={grind}
+                      onClick={() => handleGrindChange(grind)}
+                      disabled={allWeightsOut}
+                      className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                        allWeightsOut
+                          ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
+                          : selectedGrind === grind
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border text-foreground hover:border-primary'
+                      }`}
+                    >
+                      {grind}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Weight Selection */}
+            <div className="mb-6">
+              <span className="text-xs text-muted-foreground block mb-2">Presentación:</span>
+              <div className="flex gap-2">
+                {product.weights.map(weight => {
+                  const weightOut = getStock(weight.value, selectedGrind) <= 0;
+                  return (
+                    <button
+                      key={weight.value}
+                      onClick={() => handleWeightChange(weight)}
+                      disabled={weightOut}
+                      className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                        weightOut
+                          ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
+                          : selectedWeight.value === weight.value
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : 'border-border text-foreground hover:border-primary'
+                      }`}
+                    >
+                      {weight.value}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Spacer when no variants to keep layout consistent */}
+        {!hasVariants && <div className="mb-6" />}
 
         {/* Price & Add to Cart */}
         <div className="flex items-center justify-between">

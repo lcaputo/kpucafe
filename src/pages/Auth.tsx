@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Eye, EyeOff, Coffee, Loader2 } from 'lucide-react';
+import { Eye, EyeOff, Coffee, Loader2, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import logoKpu from '@/assets/logo-kpu.png';
 
@@ -76,6 +76,15 @@ export default function Auth() {
       {/* Left side - Form */}
       <div className="flex-1 flex items-center justify-center px-4 py-12 bg-background">
         <div className="w-full max-w-md">
+          {/* Back to store link */}
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors text-sm"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver a la tienda
+          </Link>
+
           <div className="text-center mb-8">
             <img 
               src={logoKpu} 
