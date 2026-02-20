@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       coupons: {
         Row: {
           code: string
@@ -232,8 +265,10 @@ export type Database = {
       products: {
         Row: {
           base_price: number
+          category_id: string | null
           created_at: string
           description: string | null
+          has_variants: boolean
           id: string
           image_url: string | null
           is_active: boolean | null
@@ -245,8 +280,10 @@ export type Database = {
         }
         Insert: {
           base_price: number
+          category_id?: string | null
           created_at?: string
           description?: string | null
+          has_variants?: boolean
           id?: string
           image_url?: string | null
           is_active?: boolean | null
@@ -258,8 +295,10 @@ export type Database = {
         }
         Update: {
           base_price?: number
+          category_id?: string | null
           created_at?: string
           description?: string | null
+          has_variants?: boolean
           id?: string
           image_url?: string | null
           is_active?: boolean | null
@@ -269,7 +308,15 @@ export type Database = {
           sort_order?: number | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "products_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

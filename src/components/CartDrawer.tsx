@@ -1,14 +1,75 @@
-import { X, Minus, Plus, ShoppingBag, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { X, Minus, Plus, ShoppingBag, Trash2, LogIn, UserPlus, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/hooks/useAuth';
+
+function AccountPromptModal({ onClose, onContinue }: { onClose: () => void; onContinue: () => void }) {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-foreground/60 z-[60]" onClick={onClose} />
+      <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 max-w-sm mx-auto bg-card rounded-2xl shadow-2xl z-[60] p-6">
+        <div className="text-center mb-6">
+          <div className="w-14 h-14 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-3">
+            <ShoppingBag className="h-7 w-7 text-primary" />
+          </div>
+          <h3 className="font-display text-xl font-bold text-card-foreground mb-1">¿Tienes una cuenta?</h3>
+          <p className="text-sm text-muted-foreground">
+            Inicia sesión para guardar tus pedidos y agilizar el proceso de pago.
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <button
+            onClick={() => { onClose(); navigate('/auth'); }}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+          >
+            <LogIn className="h-5 w-5" />
+            Iniciar sesión
+          </button>
+
+          <button
+            onClick={() => { onClose(); navigate('/auth'); }}
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-border text-foreground rounded-xl font-medium hover:bg-muted transition-colors"
+          >
+            <UserPlus className="h-5 w-5" />
+            Crear cuenta nueva
+          </button>
+
+          <button
+            onClick={onContinue}
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 text-muted-foreground hover:text-foreground text-sm transition-colors"
+          >
+            Continuar sin cuenta
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
 
 export default function CartDrawer() {
   const { items, isCartOpen, setIsCartOpen, removeItem, updateQuantity, totalPrice, clearCart } = useCart();
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const [showAccountPrompt, setShowAccountPrompt] = useState(false);
 
   if (!isCartOpen) return null;
 
   const handleCheckout = () => {
+    if (!user) {
+      setShowAccountPrompt(true);
+    } else {
+      setIsCartOpen(false);
+      navigate('/checkout');
+    }
+  };
+
+  const handleContinueAsGuest = () => {
+    setShowAccountPrompt(false);
     setIsCartOpen(false);
     navigate('/checkout');
   };
@@ -124,6 +185,14 @@ export default function CartDrawer() {
           )}
         </div>
       </div>
+
+      {/* Account prompt modal */}
+      {showAccountPrompt && (
+        <AccountPromptModal
+          onClose={() => setShowAccountPrompt(false)}
+          onContinue={handleContinueAsGuest}
+        />
+      )}
     </>
   );
 }

@@ -1,10 +1,18 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Plus, Edit, Trash2, Loader2, Coffee, Upload, X, Image, ArrowUp, ArrowDown, GripVertical, Package } from 'lucide-react';
+import { Plus, Edit, Trash2, Loader2, Coffee, Upload, X, Image, ArrowUp, ArrowDown, GripVertical, Package, Tag } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { useRef } from 'react';
 import ProductVariantsManager from '@/components/admin/ProductVariantsManager';
+
+interface Category {
+  id: string;
+  name: string;
+  icon: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
 
 interface Product {
   id: string;
@@ -16,6 +24,8 @@ interface Product {
   roast_level: number | null;
   is_active: boolean;
   sort_order: number;
+  category_id: string | null;
+  has_variants: boolean;
 }
 
 interface ProductVariant {
@@ -31,6 +41,7 @@ export default function AdminProducts() {
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -39,6 +50,7 @@ export default function AdminProducts() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [variantsProductId, setVariantsProductId] = useState<string | null>(null);
   const [variantsProductName, setVariantsProductName] = useState('');
+  const [filterCategoryId, setFilterCategoryId] = useState<string | 'all'>('all');
 
   const [formData, setFormData] = useState({
     name: '',
@@ -46,28 +58,40 @@ export default function AdminProducts() {
     image_url: '',
     origin: '',
     roast_level: 3,
+    category_id: '' as string,
+    has_variants: true,
+    base_price: 0,
   });
 
-  useEffect(() => { fetchProducts(); }, []);
+  useEffect(() => { fetchAll(); }, []);
 
-  const fetchProducts = async () => {
-    const [productsRes, variantsRes] = await Promise.all([
+  const fetchAll = async () => {
+    const [productsRes, variantsRes, categoriesRes] = await Promise.all([
       supabase.from('products').select('*').order('sort_order', { ascending: true }),
       supabase.from('product_variants').select('*'),
+      supabase.from('categories').select('*').order('sort_order', { ascending: true }),
     ]);
     setProducts((productsRes.data as any[])?.map(p => ({ ...p, sort_order: p.sort_order ?? 0 })) || []);
     setVariants(variantsRes.data || []);
+    setCategories((categoriesRes.data as Category[]) || []);
     setLoading(false);
   };
 
+  const filteredProducts = filterCategoryId === 'all'
+    ? products
+    : products.filter(p => p.category_id === filterCategoryId);
+
   const moveProduct = async (index: number, direction: 'up' | 'down') => {
+    // Work on filtered list but update by product id in the full list
+    const displayList = filteredProducts;
     const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= products.length) return;
+    if (newIndex < 0 || newIndex >= displayList.length) return;
 
     const updated = [...products];
-    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    const globalIndexA = products.findIndex(p => p.id === displayList[index].id);
+    const globalIndexB = products.findIndex(p => p.id === displayList[newIndex].id);
+    [updated[globalIndexA], updated[globalIndexB]] = [updated[globalIndexB], updated[globalIndexA]];
 
-    // Update sort_order for both
     const promises = updated.map((p, i) =>
       supabase.from('products').update({ sort_order: i } as any).eq('id', p.id)
     );
@@ -111,23 +135,39 @@ export default function AdminProducts() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = {
+      name: formData.name,
+      description: formData.description,
+      image_url: formData.image_url,
+      origin: formData.origin,
+      roast_level: formData.roast_level,
+      category_id: formData.category_id || null,
+      has_variants: formData.has_variants,
+      base_price: formData.has_variants ? 0 : formData.base_price,
+    };
+
     if (editingProduct) {
-      const { error } = await supabase.from('products').update(formData).eq('id', editingProduct.id);
+      const { error } = await supabase.from('products').update(payload as any).eq('id', editingProduct.id);
       if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); }
-      else { toast({ title: 'Producto actualizado' }); fetchProducts(); closeModal(); }
+      else { toast({ title: 'Producto actualizado' }); fetchAll(); closeModal(); }
     } else {
-      const { data, error } = await supabase.from('products').insert({ ...formData, base_price: 0, sort_order: products.length } as any).select().single();
+      const { data, error } = await supabase.from('products')
+        .insert({ ...payload, sort_order: products.length } as any)
+        .select().single();
       if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); }
       else {
-        await supabase.from('product_variants').insert([
-          { product_id: data.id, weight: '250g', grind: 'Grano', price_modifier: 35000 },
-          { product_id: data.id, weight: '250g', grind: 'Molido', price_modifier: 35000 },
-          { product_id: data.id, weight: '500g', grind: 'Grano', price_modifier: 60000 },
-          { product_id: data.id, weight: '500g', grind: 'Molido', price_modifier: 60000 },
-          { product_id: data.id, weight: '1kg', grind: 'Grano', price_modifier: 90000 },
-          { product_id: data.id, weight: '1kg', grind: 'Molido', price_modifier: 90000 },
-        ]);
-        toast({ title: 'Producto creado' }); fetchProducts(); closeModal();
+        // Only create default variants for products with variants (like coffee)
+        if (formData.has_variants) {
+          await supabase.from('product_variants').insert([
+            { product_id: data.id, weight: '250g', grind: 'Grano', price_modifier: 35000 },
+            { product_id: data.id, weight: '250g', grind: 'Molido', price_modifier: 35000 },
+            { product_id: data.id, weight: '500g', grind: 'Grano', price_modifier: 60000 },
+            { product_id: data.id, weight: '500g', grind: 'Molido', price_modifier: 60000 },
+            { product_id: data.id, weight: '1kg', grind: 'Grano', price_modifier: 90000 },
+            { product_id: data.id, weight: '1kg', grind: 'Molido', price_modifier: 90000 },
+          ]);
+        }
+        toast({ title: 'Producto creado' }); fetchAll(); closeModal();
       }
     }
   };
@@ -136,23 +176,42 @@ export default function AdminProducts() {
     if (!confirm('¿Estás seguro de eliminar este producto?')) return;
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) { toast({ title: 'Error', description: error.message, variant: 'destructive' }); }
-    else { toast({ title: 'Producto eliminado' }); fetchProducts(); }
+    else { toast({ title: 'Producto eliminado' }); fetchAll(); }
   };
 
   const openModal = (product?: Product) => {
     if (product) {
       setEditingProduct(product);
-      setFormData({ name: product.name, description: product.description || '', image_url: product.image_url || '', origin: product.origin || '', roast_level: product.roast_level || 3 });
+      setFormData({
+        name: product.name,
+        description: product.description || '',
+        image_url: product.image_url || '',
+        origin: product.origin || '',
+        roast_level: product.roast_level || 3,
+        category_id: product.category_id || '',
+        has_variants: product.has_variants,
+        base_price: product.base_price || 0,
+      });
       setImagePreview(product.image_url || null);
     } else {
       setEditingProduct(null);
-      setFormData({ name: '', description: '', image_url: '', origin: '', roast_level: 3 });
+      setFormData({ name: '', description: '', image_url: '', origin: '', roast_level: 3, category_id: '', has_variants: true, base_price: 0 });
       setImagePreview(null);
     }
     setIsModalOpen(true);
   };
 
-  const closeModal = () => { setIsModalOpen(false); setEditingProduct(null); setImagePreview(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setEditingProduct(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const getCategoryName = (categoryId: string | null) => {
+    if (!categoryId) return null;
+    return categories.find(c => c.id === categoryId)?.name || null;
+  };
 
   if (loading) {
     return <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -165,17 +224,46 @@ export default function AdminProducts() {
         <button onClick={() => openModal()} className="btn-kpu flex items-center gap-2"><Plus className="h-5 w-5" />Nuevo Producto</button>
       </div>
 
-      {products.length === 0 ? (
+      {/* Category filter tabs */}
+      <div className="flex gap-2 flex-wrap mb-5">
+        <button
+          onClick={() => setFilterCategoryId('all')}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${filterCategoryId === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary'}`}
+        >
+          Todos ({products.length})
+        </button>
+        {categories.map(cat => {
+          const count = products.filter(p => p.category_id === cat.id).length;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setFilterCategoryId(cat.id)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${filterCategoryId === cat.id ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary'}`}
+            >
+              {cat.name} ({count})
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setFilterCategoryId('__none__')}
+          className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${filterCategoryId === '__none__' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary'}`}
+        >
+          Sin categoría ({products.filter(p => !p.category_id).length})
+        </button>
+      </div>
+
+      {filteredProducts.length === 0 ? (
         <div className="text-center py-16 bg-card rounded-2xl">
           <Coffee className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
           <h3 className="font-display text-xl font-semibold text-foreground mb-2">No hay productos</h3>
-          <p className="text-muted-foreground mb-6">Agrega tu primer producto de café</p>
+          <p className="text-muted-foreground mb-6">Agrega tu primer producto</p>
           <button onClick={() => openModal()} className="btn-kpu inline-flex items-center gap-2"><Plus className="h-5 w-5" />Agregar Producto</button>
         </div>
       ) : (
         <div className="space-y-3">
-          {products.map((product, index) => {
+          {filteredProducts.map((product, index) => {
             const productVariants = variants.filter(v => v.product_id === product.id);
+            const categoryName = getCategoryName(product.category_id);
             return (
               <div key={product.id} className="bg-card rounded-xl shadow-soft p-4 flex items-center gap-4 group hover:shadow-md transition-shadow">
                 {/* Reorder controls */}
@@ -190,7 +278,7 @@ export default function AdminProducts() {
                   <GripVertical className="h-4 w-4 text-muted-foreground/40 mx-auto" />
                   <button
                     onClick={() => moveProduct(index, 'down')}
-                    disabled={index === products.length - 1}
+                    disabled={index === filteredProducts.length - 1}
                     className="p-1 text-muted-foreground hover:text-primary disabled:opacity-20 transition-colors"
                   >
                     <ArrowDown className="h-4 w-4" />
@@ -208,16 +296,26 @@ export default function AdminProducts() {
 
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-foreground truncate">{product.name}</p>
                     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${product.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {product.is_active ? 'Activo' : 'Inactivo'}
                     </span>
+                    {categoryName && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                        <Tag className="h-3 w-3" />
+                        {categoryName}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                    <span>{product.origin || 'Sin origen'}</span>
-                    <span>•</span>
-                    <span>{productVariants.length} variantes</span>
+                    {product.origin && <span>{product.origin}</span>}
+                    {product.origin && <span>•</span>}
+                    {product.has_variants ? (
+                      <span>{productVariants.length} variantes</span>
+                    ) : (
+                      <span>${product.base_price.toLocaleString('es-CO')} COP</span>
+                    )}
                   </div>
                 </div>
 
@@ -232,7 +330,15 @@ export default function AdminProducts() {
                     }}
                     title={product.is_active ? 'Desactivar' : 'Activar'}
                   />
-                  <button onClick={() => { setVariantsProductId(product.id); setVariantsProductName(product.name); }} className="p-2 text-muted-foreground hover:text-accent-foreground transition-colors" title="Variantes"><Package className="h-4 w-4" /></button>
+                  {product.has_variants && (
+                    <button
+                      onClick={() => { setVariantsProductId(product.id); setVariantsProductName(product.name); }}
+                      className="p-2 text-muted-foreground hover:text-accent-foreground transition-colors"
+                      title="Variantes"
+                    >
+                      <Package className="h-4 w-4" />
+                    </button>
+                  )}
                   <button onClick={() => openModal(product)} className="p-2 text-muted-foreground hover:text-primary transition-colors"><Edit className="h-4 w-4" /></button>
                   <button onClick={() => deleteProduct(product.id)} className="p-2 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
                 </div>
@@ -273,19 +379,73 @@ export default function AdminProducts() {
                   <label className="block text-sm font-medium text-foreground mb-1">Nombre</label>
                   <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
+
+                {/* Category */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Categoría</label>
+                  <select
+                    value={formData.category_id}
+                    onChange={e => {
+                      const catId = e.target.value;
+                      // If category is Café, default has_variants to true; otherwise false
+                      const selectedCat = categories.find(c => c.id === catId);
+                      const isCoffe = selectedCat?.name === 'Café';
+                      setFormData({ ...formData, category_id: catId, has_variants: isCoffe });
+                    }}
+                    className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  >
+                    <option value="">Sin categoría</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.id}>{cat.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Has variants toggle */}
+                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Tiene variantes (peso/molienda)</p>
+                    <p className="text-xs text-muted-foreground">Activa para café. Desactiva para equipos con precio fijo.</p>
+                  </div>
+                  <Switch
+                    checked={formData.has_variants}
+                    onCheckedChange={checked => setFormData({ ...formData, has_variants: checked })}
+                  />
+                </div>
+
+                {/* Base price (only when no variants) */}
+                {!formData.has_variants && (
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Precio (COP)</label>
+                    <input
+                      type="number"
+                      value={formData.base_price}
+                      onChange={e => setFormData({ ...formData, base_price: parseInt(e.target.value) || 0 })}
+                      required
+                      min={0}
+                      className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Descripción</label>
                   <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={3} className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Origen</label>
-                  <input type="text" value={formData.origin} onChange={e => setFormData({ ...formData, origin: e.target.value })} placeholder="Huila, Nariño..." className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                  <label className="block text-sm font-medium text-foreground mb-1">Origen / Modelo</label>
+                  <input type="text" value={formData.origin} onChange={e => setFormData({ ...formData, origin: e.target.value })} placeholder="Huila, Nariño, Hario V60..." className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Nivel de Tostado (1-5)</label>
-                  <input type="range" min="1" max="5" value={formData.roast_level} onChange={e => setFormData({ ...formData, roast_level: parseInt(e.target.value) })} className="w-full" />
-                  <div className="flex justify-between text-xs text-muted-foreground"><span>Suave</span><span>Medio</span><span>Fuerte</span></div>
-                </div>
+
+                {formData.has_variants && (
+                  <div>
+                    <label className="block text-sm font-medium text-foreground mb-1">Nivel de Tostado (1-5)</label>
+                    <input type="range" min="1" max="5" value={formData.roast_level} onChange={e => setFormData({ ...formData, roast_level: parseInt(e.target.value) })} className="w-full" />
+                    <div className="flex justify-between text-xs text-muted-foreground"><span>Suave</span><span>Medio</span><span>Fuerte</span></div>
+                  </div>
+                )}
+
                 <div className="flex gap-3 pt-4">
                   <button type="button" onClick={closeModal} className="flex-1 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition-colors">Cancelar</button>
                   <button type="submit" className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold">{editingProduct ? 'Guardar' : 'Crear'}</button>
@@ -299,7 +459,7 @@ export default function AdminProducts() {
         <ProductVariantsManager
           productId={variantsProductId}
           productName={variantsProductName}
-          onClose={() => { setVariantsProductId(null); fetchProducts(); }}
+          onClose={() => { setVariantsProductId(null); fetchAll(); }}
         />
       )}
     </div>
