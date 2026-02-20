@@ -103,7 +103,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <h3 className="font-display text-xl font-bold text-foreground mb-2">
           {product.name}
         </h3>
-        <p className="text-muted-foreground text-sm mb-4 line-clamp-2">
+        <p className="text-muted-foreground text-sm mb-4">
           {product.description}
         </p>
 
