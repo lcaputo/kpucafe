@@ -118,6 +118,10 @@
     @apply border-border;
   }
 
+  section {
+    border: none;
+  }
+
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Open Sans', sans-serif;
