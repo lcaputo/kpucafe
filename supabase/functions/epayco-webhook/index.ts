@@ -6,6 +6,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+async function sha256Hex(message: string): Promise<string> {
+  const msgBuffer = new TextEncoder().encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -15,6 +22,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const epaycoPrivateKey = Deno.env.get('EPAYCO_PRIVATE_KEY');
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -46,8 +54,6 @@ serve(async (req) => {
     const refPayco = data.x_ref_payco || data.ref_payco;
     const orderId = data.x_extra1 || data.x_id_invoice;
     const codResponse = data.x_cod_response || data.x_cod_transaction_state;
-    const response = data.x_response || data.x_transaction_state;
-    const amount = data.x_amount;
 
     if (!orderId) {
       console.error('No order ID found in webhook data');
@@ -57,46 +63,95 @@ serve(async (req) => {
       );
     }
 
-    // Validate transaction with ePayco API (optional but recommended)
-    if (refPayco) {
-      try {
-        const validationResponse = await fetch(
-          `https://secure.epayco.co/validation/v1/reference/${refPayco}`
-        );
-        const validationData = await validationResponse.json();
+    // Verify ePayco signature if private key is configured
+    if (epaycoPrivateKey) {
+      const xSignature = data.x_signature;
+      const xCustIdCliente = data.x_cust_id_cliente;
+      const xAmount = data.x_amount;
+      const xCurrency = data.x_currency_code;
+
+      if (xSignature && xCustIdCliente && xAmount && xCurrency && refPayco) {
+        const signatureString = `${xCustIdCliente}^${epaycoPrivateKey}^${refPayco}^${codResponse}^${xAmount}^${xCurrency}`;
+        const expectedSignature = await sha256Hex(signatureString);
         
-        if (validationData.success && validationData.data) {
-          // Use validated data
-          const validatedCodResponse = validationData.data.x_cod_response;
-          const validatedAmount = validationData.data.x_amount;
-          
-          console.log('Validated transaction:', JSON.stringify(validationData.data));
-          
-          // Verify amount matches order
-          const { data: order } = await supabase
-            .from('orders')
-            .select('total')
-            .eq('id', orderId)
-            .single();
-            
-          if (order && Math.abs(order.total - Number(validatedAmount)) > 1) {
-            console.error('Amount mismatch:', order.total, 'vs', validatedAmount);
-            return new Response(
-              JSON.stringify({ success: false, error: 'Amount mismatch' }),
-              { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-            );
-          }
+        if (xSignature !== expectedSignature) {
+          console.error('Invalid ePayco signature');
+          return new Response(
+            JSON.stringify({ success: false, error: 'Invalid signature' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 }
+          );
         }
-      } catch (validationError) {
-        console.error('Error validating with ePayco:', validationError);
-        // Continue with original data if validation fails
+        console.log('ePayco signature verified successfully');
+      } else {
+        console.error('Missing signature fields in webhook data');
+        return new Response(
+          JSON.stringify({ success: false, error: 'Missing signature fields' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
       }
+    } else {
+      console.warn('EPAYCO_PRIVATE_KEY not set - signature verification skipped');
     }
+
+    // Mandatory validation with ePayco API
+    if (!refPayco) {
+      console.error('No payment reference for validation');
+      return new Response(
+        JSON.stringify({ success: false, error: 'No payment reference' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
+    let validatedCodResponse: string | null = null;
+
+    try {
+      const validationResponse = await fetch(
+        `https://secure.epayco.co/validation/v1/reference/${refPayco}`
+      );
+      const validationData = await validationResponse.json();
+      
+      if (validationData.success && validationData.data) {
+        validatedCodResponse = String(validationData.data.x_cod_response);
+        const validatedAmount = validationData.data.x_amount;
+        
+        console.log('Validated transaction:', JSON.stringify(validationData.data));
+        
+        // Verify amount matches order exactly
+        const { data: order } = await supabase
+          .from('orders')
+          .select('total')
+          .eq('id', orderId)
+          .single();
+          
+        if (order && order.total !== Number(validatedAmount)) {
+          console.error('Amount mismatch:', order.total, 'vs', validatedAmount);
+          return new Response(
+            JSON.stringify({ success: false, error: 'Amount mismatch' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+      } else {
+        console.error('ePayco validation failed:', JSON.stringify(validationData));
+        return new Response(
+          JSON.stringify({ success: false, error: 'Payment validation failed' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
+      }
+    } catch (validationError) {
+      console.error('Error validating with ePayco:', validationError);
+      return new Response(
+        JSON.stringify({ success: false, error: 'Payment validation unavailable' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 502 }
+      );
+    }
+
+    // Use validated response code (not the one from the webhook payload)
+    const trustedCodResponse = validatedCodResponse || codResponse;
 
     // Map ePayco response codes to order status
     let orderStatus: 'pending' | 'paid' | 'cancelled' = 'pending';
     
-    switch (codResponse) {
+    switch (trustedCodResponse) {
       case '1': // Aceptada
         orderStatus = 'paid';
         break;
@@ -137,9 +192,8 @@ serve(async (req) => {
 
   } catch (error: unknown) {
     console.error('Webhook error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ success: false, error: errorMessage }),
+      JSON.stringify({ success: false, error: 'Internal error' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
