@@ -1,0 +1,178 @@
+@import "tailwindcss";
+
+@config "../tailwind.config.ts";
+
+/* KPU Cafe Design System - Colombian Coffee Premium Brand */
+
+@layer base {
+  :root {
+    /* Core brand colors - warm Colombian coffee palette */
+    --background: 30 25% 97%;
+    --foreground: 20 30% 12%;
+
+    --card: 30 20% 98%;
+    --card-foreground: 20 30% 12%;
+
+    --popover: 30 20% 98%;
+    --popover-foreground: 20 30% 12%;
+
+    /* Primary - KPU Orange/Red vibrant */
+    --primary: 14 82% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary - Rich coffee brown */
+    --secondary: 20 35% 20%;
+    --secondary-foreground: 30 25% 95%;
+
+    /* Muted - Warm cream/beige */
+    --muted: 30 20% 92%;
+    --muted-foreground: 20 20% 40%;
+
+    /* Accent - Gold/Amber highlights */
+    --accent: 38 75% 55%;
+    --accent-foreground: 20 30% 12%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 20% 85%;
+    --input: 30 20% 88%;
+    --ring: 14 82% 53%;
+
+    --radius: 0.75rem;
+
+    /* Custom KPU tokens */
+    --kpu-orange: 14 82% 53%;
+    --kpu-brown-dark: 15 45% 12%;
+    --kpu-brown-medium: 18 40% 22%;
+    --kpu-brown-light: 20 35% 32%;
+    --kpu-cream: 35 30% 92%;
+    --kpu-gold: 38 75% 55%;
+    --kpu-tan: 30 40% 70%;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(180deg, hsl(15 45% 12%) 0%, hsl(18 40% 22%) 50%, hsl(14 82% 53%) 100%);
+    --gradient-mountains: linear-gradient(180deg, hsl(20 35% 32%) 0%, hsl(18 40% 22%) 40%, hsl(15 45% 12%) 70%, hsl(14 82% 53%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(14 82% 53%) 0%, hsl(38 75% 55%) 100%);
+    --gradient-coffee: linear-gradient(180deg, hsl(20 35% 20%) 0%, hsl(15 45% 12%) 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(20 30% 12% / 0.15);
+    --shadow-warm: 0 8px 32px -8px hsl(14 82% 53% / 0.25);
+    --shadow-elevated: 0 12px 40px -12px hsl(20 30% 12% / 0.2);
+
+    --sidebar-background: 30 25% 97%;
+    --sidebar-foreground: 20 20% 35%;
+    --sidebar-primary: 14 82% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 30 20% 92%;
+    --sidebar-accent-foreground: 20 30% 12%;
+    --sidebar-border: 30 20% 85%;
+    --sidebar-ring: 14 82% 53%;
+  }
+
+  .dark {
+    --background: 15 45% 8%;
+    --foreground: 30 25% 95%;
+
+    --card: 18 40% 12%;
+    --card-foreground: 30 25% 95%;
+
+    --popover: 18 40% 12%;
+    --popover-foreground: 30 25% 95%;
+
+    --primary: 14 82% 53%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 20 35% 25%;
+    --secondary-foreground: 30 25% 95%;
+
+    --muted: 18 30% 18%;
+    --muted-foreground: 30 20% 65%;
+
+    --accent: 38 75% 55%;
+    --accent-foreground: 15 45% 8%;
+
+    --destructive: 0 62% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 18 30% 20%;
+    --input: 18 30% 22%;
+    --ring: 14 82% 53%;
+
+    --sidebar-background: 15 45% 10%;
+    --sidebar-foreground: 30 25% 90%;
+    --sidebar-primary: 14 82% 53%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 18 30% 18%;
+    --sidebar-accent-foreground: 30 25% 95%;
+    --sidebar-border: 18 30% 20%;
+    --sidebar-ring: 14 82% 53%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  section {
+    border: none;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Open Sans', sans-serif;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Paytone One', sans-serif;
+  }
+}
+
+@layer components {
+  .text-gradient-warm {
+    @apply bg-clip-text text-transparent;
+    background-image: var(--gradient-warm);
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .bg-gradient-mountains {
+    background: var(--gradient-mountains);
+  }
+
+  .bg-gradient-coffee {
+    background: var(--gradient-coffee);
+  }
+
+  .shadow-warm {
+    box-shadow: var(--shadow-warm);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .btn-kpu {
+    @apply bg-primary text-primary-foreground font-semibold px-8 py-4 rounded-full transition-all duration-300;
+    box-shadow: var(--shadow-warm);
+  }
+
+  .btn-kpu:hover {
+    @apply scale-105;
+    box-shadow: 0 12px 40px -8px hsl(14 82% 53% / 0.4);
+  }
+
+  .card-product {
+    @apply bg-card rounded-2xl overflow-hidden transition-all duration-300;
+    box-shadow: var(--shadow-soft);
+  }
+
+  .card-product:hover {
+    @apply -translate-y-2;
+    box-shadow: var(--shadow-elevated);
+  }
+}
