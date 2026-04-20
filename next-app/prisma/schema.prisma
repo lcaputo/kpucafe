@@ -1,0 +1,289 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -- Enums --
+
+enum AppRole {
+  admin
+  user
+
+  @@map("app_role")
+}
+
+enum OrderStatus {
+  pending
+  paid
+  preparing
+  shipped
+  delivered
+  cancelled
+
+  @@map("order_status")
+}
+
+enum SubscriptionFrequency {
+  weekly
+  biweekly
+  monthly
+
+  @@map("subscription_frequency")
+}
+
+enum SubscriptionStatus {
+  active
+  paused
+  cancelled
+
+  @@map("subscription_status")
+}
+
+// -- Users (replaces auth.users) --
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  profile           Profile?
+  roles             UserRole[]
+  orders            Order[]
+  subscriptions     Subscription[]
+  shippingAddresses ShippingAddress[]
+
+  @@map("users")
+}
+
+// -- Profiles --
+
+model Profile {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @unique @map("user_id") @db.Uuid
+  fullName   String?  @map("full_name")
+  phone      String?
+  address    String?
+  city       String?
+  department String?
+  postalCode String?  @map("postal_code")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+// -- User Roles --
+
+model UserRole {
+  id     String  @id @default(uuid()) @db.Uuid
+  userId String  @map("user_id") @db.Uuid
+  role   AppRole @default(user)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+  @@map("user_roles")
+}
+
+// -- Categories --
+
+model Category {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  icon        String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  products Product[]
+
+  @@map("categories")
+}
+
+// -- Products --
+
+model Product {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  basePrice   Int      @map("base_price")
+  imageUrl    String?  @map("image_url")
+  origin      String?
+  roastLevel  Int?     @default(3) @map("roast_level")
+  categoryId  String?  @map("category_id") @db.Uuid
+  hasVariants Boolean  @default(true) @map("has_variants")
+  sortOrder   Int      @default(0) @map("sort_order")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  category      Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  variants      ProductVariant[]
+  orderItems    OrderItem[]
+  subscriptions Subscription[]
+
+  @@map("products")
+}
+
+// -- Product Variants --
+
+model ProductVariant {
+  id            String   @id @default(uuid()) @db.Uuid
+  productId     String   @map("product_id") @db.Uuid
+  weight        String
+  grind         String
+  priceModifier Int      @default(0) @map("price_modifier")
+  stock         Int      @default(100)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems    OrderItem[]
+  subscriptions Subscription[]
+
+  @@map("product_variants")
+}
+
+// -- Orders --
+
+model Order {
+  id                 String      @id @default(uuid()) @db.Uuid
+  userId             String?     @map("user_id") @db.Uuid
+  status             OrderStatus @default(pending)
+  total              Int
+  couponId           String?     @map("coupon_id") @db.Uuid
+  discountAmount     Int         @default(0) @map("discount_amount")
+  shippingName       String      @map("shipping_name")
+  shippingPhone      String      @map("shipping_phone")
+  shippingAddress    String      @map("shipping_address")
+  shippingCity       String      @map("shipping_city")
+  shippingDepartment String?     @map("shipping_department")
+  shippingPostalCode String?     @map("shipping_postal_code")
+  carrier            String?
+  trackingNumber     String?     @map("tracking_number")
+  paymentReference   String?     @map("payment_reference")
+  notes              String?
+  createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime    @updatedAt @map("updated_at") @db.Timestamptz
+
+  user   User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  coupon Coupon?    @relation(fields: [couponId], references: [id])
+  items  OrderItem[]
+
+  @@map("orders")
+}
+
+// -- Order Items --
+
+model OrderItem {
+  id          String   @id @default(uuid()) @db.Uuid
+  orderId     String   @map("order_id") @db.Uuid
+  productId   String?  @map("product_id") @db.Uuid
+  variantId   String?  @map("variant_id") @db.Uuid
+  productName String   @map("product_name")
+  variantInfo String   @map("variant_info")
+  quantity    Int
+  unitPrice   Int      @map("unit_price")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  order   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@map("order_items")
+}
+
+// -- Subscriptions --
+
+model Subscription {
+  id               String                @id @default(uuid()) @db.Uuid
+  userId           String                @map("user_id") @db.Uuid
+  productId        String?               @map("product_id") @db.Uuid
+  variantId        String?               @map("variant_id") @db.Uuid
+  frequency        SubscriptionFrequency
+  status           SubscriptionStatus    @default(active)
+  nextDeliveryDate DateTime              @map("next_delivery_date") @db.Date
+  price            Int
+  shippingAddress  String                @map("shipping_address")
+  shippingCity     String                @map("shipping_city")
+  createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  @@map("subscriptions")
+}
+
+// -- Subscription Plans --
+
+model SubscriptionPlan {
+  id             String   @id @default(uuid()) @db.Uuid
+  name           String
+  frequency      String
+  frequencyLabel String   @map("frequency_label")
+  price          Int
+  originalPrice  Int?     @map("original_price")
+  discount       String?
+  isPopular      Boolean  @default(false) @map("is_popular")
+  features       String[] @default([])
+  isActive       Boolean  @default(true) @map("is_active")
+  sortOrder      Int      @default(0) @map("sort_order")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("subscription_plans")
+}
+
+// -- Coupons --
+
+model Coupon {
+  id             String    @id @default(uuid()) @db.Uuid
+  code           String    @unique
+  description    String?
+  discountType   String    @default("percentage") @map("discount_type")
+  discountValue  Int       @map("discount_value")
+  minOrderAmount Int       @default(0) @map("min_order_amount")
+  maxUses        Int?      @map("max_uses")
+  currentUses    Int       @default(0) @map("current_uses")
+  isActive       Boolean   @default(true) @map("is_active")
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  orders Order[]
+
+  @@map("coupons")
+}
+
+// -- Shipping Addresses --
+
+model ShippingAddress {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  label      String   @default("Casa")
+  fullName   String   @map("full_name")
+  phone      String
+  address    String
+  city       String
+  department String
+  postalCode String?  @map("postal_code")
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("shipping_addresses")
+}
