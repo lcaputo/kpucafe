@@ -1,0 +1,253 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/providers';
+import { useToast } from '@/hooks/use-toast';
+import Header from '@/components/header';
+import Footer from '@/components/footer';
+import CartDrawer from '@/components/cart-drawer';
+import { Coffee, Calendar, Pause, Play, Loader2, RefreshCw } from 'lucide-react';
+
+interface Subscription {
+  id: string;
+  frequency: string;
+  status: string;
+  next_delivery_date: string;
+  price: number;
+  shipping_city: string;
+  product_id: string;
+}
+
+const frequencyLabels: Record<string, string> = {
+  weekly: 'Semanal',
+  biweekly: 'Quincenal',
+  monthly: 'Mensual',
+};
+
+export default function MySubscriptions() {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace('/auth');
+    }
+  }, [authLoading, user, router]);
+
+  useEffect(() => {
+    if (user) {
+      fetchSubscriptions();
+    }
+  }, [user]);
+
+  const fetchSubscriptions = async () => {
+    try {
+      const res = await fetch('/api/subscriptions');
+      const data = await res.json();
+      setSubscriptions((data || []).map((s: any) => ({
+        id: s.id,
+        frequency: s.frequency,
+        status: s.status,
+        next_delivery_date: s.nextDeliveryDate,
+        price: s.price,
+        shipping_city: s.shippingCity,
+        product_id: s.productId,
+      })));
+    } catch {
+      // silently fail
+    }
+    setLoading(false);
+  };
+
+  const toggleSubscription = async (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+
+    try {
+      await fetch(`/api/subscriptions/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      toast({
+        title: newStatus === 'active' ? 'Suscripcion activada' : 'Suscripcion pausada',
+        description: newStatus === 'active'
+          ? 'Tu proximo envio esta programado'
+          : 'No recibiras envios hasta que la reactives',
+      });
+      fetchSubscriptions();
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'No se pudo actualizar la suscripcion',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
+  const pausedSubscriptions = subscriptions.filter(s => s.status === 'paused');
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <CartDrawer />
+
+      <main className="pt-24 pb-16">
+        <div className="container mx-auto px-4">
+          <h1 className="font-display text-3xl font-bold text-foreground mb-8">
+            Mis Suscripciones
+          </h1>
+
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : subscriptions.length === 0 ? (
+            <div className="text-center py-16 bg-card rounded-2xl">
+              <RefreshCw className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+              <h2 className="font-display text-xl font-semibold text-foreground mb-2">
+                No tienes suscripciones activas
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                Suscribete y recibe cafe fresco en tu puerta automaticamente!
+              </p>
+              <Link href="/#suscripciones" className="btn-kpu inline-block">
+                Ver Planes
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-8">
+              {/* Active Subscriptions */}
+              {activeSubscriptions.length > 0 && (
+                <section>
+                  <h2 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Coffee className="h-5 w-5 text-primary" />
+                    Activas ({activeSubscriptions.length})
+                  </h2>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {activeSubscriptions.map(sub => (
+                      <div
+                        key={sub.id}
+                        className="bg-card rounded-xl p-6 shadow-soft border-2 border-primary/20"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <span className="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold mb-2">
+                              Activa
+                            </span>
+                            <h3 className="font-display text-lg font-bold text-foreground">
+                              Plan {frequencyLabels[sub.frequency]}
+                            </h3>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-display text-2xl font-bold text-primary">
+                              ${sub.price.toLocaleString('es-CO')}
+                            </p>
+                            <p className="text-xs text-muted-foreground">por envio</p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 mb-6">
+                          <div className="flex items-center gap-3 text-sm">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Proximo envio:</span>
+                            <span className="font-medium text-foreground">
+                              {new Date(sub.next_delivery_date).toLocaleDateString('es-CO', {
+                                day: 'numeric',
+                                month: 'long',
+                              })}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 text-sm">
+                            <Coffee className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-muted-foreground">Destino:</span>
+                            <span className="font-medium text-foreground">{sub.shipping_city}</span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => toggleSubscription(sub.id, sub.status)}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 border border-muted-foreground/30 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+                        >
+                          <Pause className="h-4 w-4" />
+                          Pausar suscripcion
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Paused Subscriptions */}
+              {pausedSubscriptions.length > 0 && (
+                <section>
+                  <h2 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <Pause className="h-5 w-5 text-yellow-500" />
+                    Pausadas ({pausedSubscriptions.length})
+                  </h2>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {pausedSubscriptions.map(sub => (
+                      <div
+                        key={sub.id}
+                        className="bg-card rounded-xl p-6 shadow-soft opacity-75"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold mb-2">
+                              Pausada
+                            </span>
+                            <h3 className="font-display text-lg font-bold text-foreground">
+                              Plan {frequencyLabels[sub.frequency]}
+                            </h3>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-display text-2xl font-bold text-muted-foreground">
+                              ${sub.price.toLocaleString('es-CO')}
+                            </p>
+                            <p className="text-xs text-muted-foreground">por envio</p>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => toggleSubscription(sub.id, sub.status)}
+                          className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                        >
+                          <Play className="h-4 w-4" />
+                          Reactivar suscripcion
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
