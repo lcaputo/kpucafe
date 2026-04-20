@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   ArrowLeft,
   CreditCard,
@@ -864,11 +865,15 @@ export default function Checkout() {
                     <div className="space-y-3 mb-4">
                       {items.map((item) => (
                         <div key={item.id} className="flex gap-3">
-                          <img
-                            src={item.image}
-                            alt={item.name}
-                            className="w-14 h-14 sm:w-16 sm:h-16 object-cover rounded-lg"
-                          />
+                          <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0">
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              fill
+                              sizes="64px"
+                              className="object-cover rounded-lg"
+                            />
+                          </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-foreground text-sm truncate">{item.name}</p>
                             <p className="text-xs text-muted-foreground">
@@ -996,7 +1001,9 @@ export default function Checkout() {
                   <div className="space-y-3 mb-4">
                     {items.map((item) => (
                       <div key={item.id} className="flex gap-3">
-                        <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-lg" />
+                        <div className="relative w-12 h-12 flex-shrink-0">
+                          <Image src={item.image} alt={item.name} fill sizes="48px" className="object-cover rounded-lg" />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-foreground text-sm truncate">{item.name}</p>
                           <p className="text-xs text-muted-foreground">

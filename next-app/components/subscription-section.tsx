@@ -6,7 +6,7 @@ interface SubscriptionSectionProps {
 
 export default function SubscriptionSection({ plans }: SubscriptionSectionProps) {
   return (
-    <section id="suscripciones" className="py-20 bg-gradient-coffee relative overflow-hidden">
+    <section id="suscripciones" aria-label="Planes de suscripcion" className="py-20 bg-gradient-coffee relative overflow-hidden">
       {/* Decorative Elements */}
       <div className="absolute top-0 left-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />

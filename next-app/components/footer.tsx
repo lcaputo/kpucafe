@@ -20,7 +20,7 @@ const localBusinessJsonLd = {
 
 export default function Footer() {
   return (
-    <footer id="contacto" className="bg-secondary text-secondary-foreground">
+    <footer id="contacto" aria-label="Informacion de contacto y enlaces" className="bg-secondary text-secondary-foreground">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Edit, Trash2, Loader2, Coffee, Upload, X, Image as ImageIcon, ArrowUp, ArrowDown, GripVertical, Package, Tag } from 'lucide-react';
+import NextImage from 'next/image';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import ProductVariantsManager from '@/components/admin/product-variants-manager';
@@ -338,7 +339,9 @@ export default function AdminProductsPage() {
                 </div>
 
                 {product.image_url ? (
-                  <img src={product.image_url} alt={product.name} className="w-14 h-14 rounded-lg object-cover flex-shrink-0" />
+                  <div className="relative w-14 h-14 flex-shrink-0">
+                    <NextImage src={product.image_url} alt={product.name} fill sizes="56px" className="rounded-lg object-cover" />
+                  </div>
                 ) : (
                   <div className="w-14 h-14 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
                     <Coffee className="h-6 w-6 text-muted-foreground" />
@@ -416,7 +419,7 @@ export default function AdminProductsPage() {
                   <label className="block text-sm font-medium text-foreground mb-2">Imagen del Producto</label>
                   {imagePreview ? (
                     <div className="relative w-full h-48 rounded-xl overflow-hidden bg-muted group">
-                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      <NextImage src={imagePreview} alt="Vista previa del producto" fill sizes="(max-width: 512px) 100vw, 512px" className="object-cover" />
                       <div className="absolute inset-0 bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                         <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 bg-card rounded-full text-foreground hover:bg-muted transition-colors"><Upload className="h-5 w-5" /></button>
                         <button type="button" onClick={removeImage} className="p-2 bg-card rounded-full text-destructive hover:bg-muted transition-colors"><X className="h-5 w-5" /></button>

@@ -2,7 +2,7 @@ import Image from 'next/image';
 
 export default function Hero() {
   return (
-    <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-coffee border-0">
+    <section aria-label="Presentacion del cafe KPU" className="relative min-h-screen flex items-center overflow-hidden bg-gradient-coffee border-0">
       {/* Background Pattern */}
       <div
         className="absolute inset-0 opacity-30"

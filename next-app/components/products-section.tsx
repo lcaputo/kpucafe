@@ -66,7 +66,7 @@ export default function ProductsSection({ products, categories }: ProductsSectio
   return (
     <>
       {/* Coffee Section */}
-      <section id="productos" className="py-20 bg-background">
+      <section id="productos" aria-label="Cafe de especialidad" className="py-20 bg-background">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-2xl mx-auto mb-12">
             <span className="inline-block px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-semibold mb-4">
@@ -101,7 +101,7 @@ export default function ProductsSection({ products, categories }: ProductsSectio
 
       {/* Equipment / Accessories Section */}
       {equipProducts.length > 0 && (
-        <section id="equipos" className="py-20 bg-muted/30">
+        <section id="equipos" aria-label="Equipo y accesorios" className="py-20 bg-muted/30">
           <div className="container mx-auto px-4">
             <div className="text-center max-w-2xl mx-auto mb-12">
               <span className="inline-block px-4 py-2 bg-secondary/10 text-secondary rounded-full text-sm font-semibold mb-4">

@@ -42,7 +42,7 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav aria-label="Navegacion principal" className="hidden md:flex items-center gap-8">
             <a
               href="/#productos"
               className="text-secondary-foreground/80 hover:text-primary transition-colors font-medium"
@@ -161,7 +161,7 @@ export default function Header() {
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <nav className="md:hidden pt-4 pb-2 border-t border-secondary-foreground/10 mt-4">
+          <nav aria-label="Menu movil" className="md:hidden pt-4 pb-2 border-t border-secondary-foreground/10 mt-4">
             <div className="flex flex-col gap-3">
               <a
                 href="/#productos"
