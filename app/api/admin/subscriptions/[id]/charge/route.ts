@@ -66,7 +66,6 @@ export async function POST(
         retryCount: 0,
       },
     });
-    log({ level: 'info', type: 'admin', action: 'admin_charge_retry', message: `Reintento de cobro admin: ${result.status}`, metadata: { subscriptionId: id, status: result.status, epaycoRef: result.epaycoRef } });
 
     if (result.status === 'approved') {
       const nextDate = computeNextBillingDate(
@@ -85,6 +84,7 @@ export async function POST(
       await prisma.order.update({ where: { id: order.id }, data: { status: 'cancelled' } });
     }
 
+    log({ level: 'info', type: 'admin', action: 'admin_charge_retry', message: `Reintento de cobro admin: ${result.status}`, metadata: { subscriptionId: id, status: result.status, epaycoRef: result.epaycoRef } });
     return NextResponse.json({ status: result.status, epaycoRef: result.epaycoRef });
   } catch (err: any) {
     if (err instanceof EpaycoError) return NextResponse.json({ message: err.message }, { status: 400 });
