@@ -191,7 +191,7 @@ function OrderCard({ order, expanded, onToggle, items }: { order: Order; expande
               <span className="text-muted-foreground">
                 {new Date(order.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
-              <span className="font-display font-bold text-foreground">${order.total.toLocaleString('es-CO')}</span>
+              <span className="font-display text-foreground">${order.total.toLocaleString('es-CO')}</span>
             </div>
             {order.tracking_number && (
               <p className="text-xs text-primary mt-1">
@@ -202,6 +202,12 @@ function OrderCard({ order, expanded, onToggle, items }: { order: Order; expande
           {expanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
         </div>
       </button>
+
+      <div className="px-4 sm:px-5 pb-3 flex justify-end">
+        <Link href={`/pedido/${order.id}`} className="text-xs font-medium text-primary hover:underline">
+          Ver detalle →
+        </Link>
+      </div>
 
       {expanded && (
         <div className="px-4 sm:px-5 pb-5 border-t border-border pt-4 space-y-5">
