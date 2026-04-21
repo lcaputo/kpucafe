@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Check, Coffee, Truck, CreditCard } from 'lucide-react';
 
 interface SubscriptionSectionProps {
@@ -137,15 +138,16 @@ export default function SubscriptionSection({ plans }: SubscriptionSectionProps)
                   ))}
                 </ul>
 
-                <button
-                  className={`w-full py-3 rounded-full font-semibold transition-all duration-300 ${
+                <Link
+                  href={`/suscribirse?plan=${plan.id}`}
+                  className={`w-full py-3 rounded-full font-semibold transition-all duration-300 text-center block ${
                     plan.isPopular
                       ? 'bg-primary-foreground text-primary hover:bg-primary-foreground/90'
                       : 'bg-primary text-primary-foreground hover:shadow-warm'
                   }`}
                 >
                   Suscribirse
-                </button>
+                </Link>
               </div>
             ))}
           </div>
