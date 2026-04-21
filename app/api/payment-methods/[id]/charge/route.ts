@@ -24,6 +24,10 @@ export async function POST(
     const order = await prisma.order.findUnique({ where: { id: orderId } });
     if (!order) return NextResponse.json({ message: 'Pedido no encontrado' }, { status: 404 });
 
+    if (order.status !== 'pending') {
+      return NextResponse.json({ message: 'El pedido ya fue procesado' }, { status: 400 });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: session.id },
       include: { profile: true },

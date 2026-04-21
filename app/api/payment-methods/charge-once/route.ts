@@ -9,12 +9,18 @@ export async function POST(req: Request) {
     const session = await requireAuth();
     const { cardNumber, expMonth, expYear, cvc, cardHolder, amount, orderId } = await req.json();
 
+    // SECURITY: cardNumber y cvc son solo para tokenización — nunca registrar ni devolver en respuestas
+
     if (!cardNumber || !expMonth || !expYear || !cvc || !cardHolder || !amount || !orderId) {
       return NextResponse.json({ message: 'Datos incompletos' }, { status: 400 });
     }
 
     const order = await prisma.order.findUnique({ where: { id: orderId } });
     if (!order) return NextResponse.json({ message: 'Pedido no encontrado' }, { status: 404 });
+
+    if (order.status !== 'pending') {
+      return NextResponse.json({ message: 'El pedido ya fue procesado' }, { status: 400 });
+    }
 
     const user = await prisma.user.findUnique({
       where: { id: session.id },
