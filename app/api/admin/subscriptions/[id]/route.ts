@@ -2,24 +2,49 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
+export async function GET(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await requireAdmin();
     const { id } = await params;
-    const data = await req.json();
-
-    const subscription = await prisma.subscription.update({
+    const sub = await prisma.subscription.findUnique({
       where: { id },
-      data: { status: data.status },
+      include: {
+        product: { select: { name: true } },
+        variant: { select: { weight: true, grind: true } },
+        plan: { select: { name: true, frequencyLabel: true } },
+        paymentMethod: { select: { franchise: true, mask: true, expMonth: true, expYear: true } },
+        user: { include: { profile: true } },
+      },
     });
+    if (!sub) return NextResponse.json({ message: 'No encontrada' }, { status: 404 });
+    return NextResponse.json(sub);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal server error';
+    if (message === 'Unauthorized') return NextResponse.json({ message }, { status: 401 });
+    return NextResponse.json({ message }, { status: 500 });
+  }
+}
 
-    return NextResponse.json(subscription);
-  } catch (err: any) {
-    if (err.message === 'Unauthorized') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    if (err.message === 'Forbidden') return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
-    return NextResponse.json({ message: err.message }, { status: 500 });
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    await requireAdmin();
+    const { id } = await params;
+    const { status } = await req.json();
+    const allowed = ['active', 'paused', 'cancelled'];
+    if (!allowed.includes(status)) {
+      return NextResponse.json({ message: 'Estado no válido' }, { status: 400 });
+    }
+    await prisma.subscription.update({ where: { id }, data: { status } });
+    return NextResponse.json({ success: true });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal server error';
+    if (message === 'Unauthorized') return NextResponse.json({ message }, { status: 401 });
+    return NextResponse.json({ message }, { status: 500 });
   }
 }

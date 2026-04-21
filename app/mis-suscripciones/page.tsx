@@ -1,252 +1,244 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
-import CartDrawer from '@/components/cart-drawer';
-import { Coffee, Calendar, Pause, Play, Loader2, RefreshCw } from 'lucide-react';
+import {
+  Coffee, Calendar, CreditCard, Pause, Play, XCircle,
+  Loader2, ChevronDown, ChevronUp, Plus, RefreshCw,
+} from 'lucide-react';
+
+interface BillingRecord {
+  id: string;
+  amount: number;
+  status: string;
+  epaycoRef: string | null;
+  createdAt: string;
+}
 
 interface Subscription {
   id: string;
+  planName: string;
   frequency: string;
   status: string;
-  next_delivery_date: string;
+  nextDeliveryDate: string;
   price: number;
-  shipping_city: string;
-  product_id: string;
+  shippingCity: string;
+  product: { name: string } | null;
+  variant: { weight: string; grind: string } | null;
+  plan: { frequencyLabel: string } | null;
+  paymentMethod: { franchise: string; mask: string } | null;
 }
 
-const frequencyLabels: Record<string, string> = {
-  weekly: 'Semanal',
-  biweekly: 'Quincenal',
-  monthly: 'Mensual',
+const FREQ_LABELS: Record<string, string> = {
+  weekly: 'Semanal', biweekly: 'Quincenal', monthly: 'Mensual',
 };
 
-export default function MySubscriptions() {
+const STATUS_COLORS: Record<string, string> = {
+  active: 'bg-green-100 text-green-700',
+  paused: 'bg-yellow-100 text-yellow-700',
+  cancelled: 'bg-red-100 text-red-700',
+};
+
+const BILLING_STATUS_COLORS: Record<string, string> = {
+  approved: 'text-green-600',
+  rejected: 'text-red-500',
+  pending: 'text-yellow-600',
+  failed: 'text-red-500',
+};
+
+export default function MisSuscripciones() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
   const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
   const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [billingRecords, setBillingRecords] = useState<Record<string, BillingRecord[]>>({});
+  const [loadingBilling, setLoadingBilling] = useState<string | null>(null);
 
-  // Redirect if not authenticated
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.replace('/auth');
-    }
+    if (!authLoading && !user) router.replace('/auth');
   }, [authLoading, user, router]);
 
-  useEffect(() => {
-    if (user) {
-      fetchSubscriptions();
-    }
-  }, [user]);
-
-  const fetchSubscriptions = async () => {
+  const fetchSubscriptions = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await fetch('/api/subscriptions');
-      const data = await res.json();
-      setSubscriptions((data || []).map((s: any) => ({
-        id: s.id,
-        frequency: s.frequency,
-        status: s.status,
-        next_delivery_date: s.nextDeliveryDate,
-        price: s.price,
-        shipping_city: s.shippingCity,
-        product_id: s.productId,
-      })));
+      if (!res.ok) throw new Error('Error al cargar suscripciones');
+      setSubscriptions((await res.json()) || []);
     } catch {
-      // silently fail
+      toast({ title: 'Error al cargar suscripciones', variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  }, [toast]);
+
+  useEffect(() => {
+    if (user) fetchSubscriptions();
+  }, [user, fetchSubscriptions]);
+
+  const toggleExpanded = async (id: string) => {
+    if (expandedId === id) { setExpandedId(null); return; }
+    setExpandedId(id);
+    if (!billingRecords[id]) {
+      setLoadingBilling(id);
+      try {
+        const res = await fetch(`/api/subscriptions/${id}/billing`);
+        const data = await res.json();
+        setBillingRecords(r => ({ ...r, [id]: data }));
+      } catch {
+        setBillingRecords(r => ({ ...r, [id]: [] }));
+      } finally {
+        setLoadingBilling(null);
+      }
+    }
   };
 
-  const toggleSubscription = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'paused' : 'active';
-
+  const updateStatus = async (id: string, status: string) => {
     try {
-      await fetch(`/api/subscriptions/${id}`, {
+      const res = await fetch(`/api/subscriptions/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status }),
       });
-      toast({
-        title: newStatus === 'active' ? 'Suscripcion activada' : 'Suscripcion pausada',
-        description: newStatus === 'active'
-          ? 'Tu proximo envio esta programado'
-          : 'No recibiras envios hasta que la reactives',
-      });
+      if (!res.ok) throw new Error('Error al actualizar estado');
+      const label = status === 'active' ? 'reactivada' : status === 'paused' ? 'pausada' : 'cancelada';
+      toast({ title: `Suscripción ${label}` });
       fetchSubscriptions();
     } catch {
-      toast({
-        title: 'Error',
-        description: 'No se pudo actualizar la suscripcion',
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', variant: 'destructive' });
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+  if (authLoading || (!user && !authLoading)) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const activeSubscriptions = subscriptions.filter(s => s.status === 'active');
-  const pausedSubscriptions = subscriptions.filter(s => s.status === 'paused');
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <CartDrawer />
-
       <main className="pt-24 pb-16">
-        <div className="container mx-auto px-4">
-          <h1 className="font-display text-3xl font-bold text-foreground mb-8">
-            Mis Suscripciones
-          </h1>
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="flex items-center justify-between mb-8">
+            <h1 className="font-display text-3xl font-bold text-foreground">Mis Suscripciones</h1>
+            <Link href="/suscribirse" className="btn-kpu flex items-center gap-2 text-sm">
+              <Plus className="h-4 w-4" /> Nueva
+            </Link>
+          </div>
 
           {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : subscriptions.length === 0 ? (
             <div className="text-center py-16 bg-card rounded-2xl">
               <RefreshCw className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-              <h2 className="font-display text-xl font-semibold text-foreground mb-2">
-                No tienes suscripciones activas
-              </h2>
-              <p className="text-muted-foreground mb-6">
-                Suscribete y recibe cafe fresco en tu puerta automaticamente!
-              </p>
-              <Link href="/#suscripciones" className="btn-kpu inline-block">
-                Ver Planes
-              </Link>
+              <h2 className="font-display text-xl font-semibold mb-2">No tienes suscripciones</h2>
+              <p className="text-muted-foreground mb-6">¡Suscríbete y recibe café fresco automáticamente!</p>
+              <Link href="/#suscripciones" className="btn-kpu inline-block">Ver Planes</Link>
             </div>
           ) : (
-            <div className="space-y-8">
-              {/* Active Subscriptions */}
-              {activeSubscriptions.length > 0 && (
-                <section>
-                  <h2 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Coffee className="h-5 w-5 text-primary" />
-                    Activas ({activeSubscriptions.length})
-                  </h2>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {activeSubscriptions.map(sub => (
-                      <div
-                        key={sub.id}
-                        className="bg-card rounded-xl p-6 shadow-soft border-2 border-primary/20"
-                      >
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <span className="inline-block px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold mb-2">
-                              Activa
-                            </span>
-                            <h3 className="font-display text-lg font-bold text-foreground">
-                              Plan {frequencyLabels[sub.frequency]}
-                            </h3>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-display text-2xl font-bold text-primary">
-                              ${sub.price.toLocaleString('es-CO')}
-                            </p>
-                            <p className="text-xs text-muted-foreground">por envio</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-3 mb-6">
-                          <div className="flex items-center gap-3 text-sm">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Proximo envio:</span>
-                            <span className="font-medium text-foreground">
-                              {new Date(sub.next_delivery_date).toLocaleDateString('es-CO', {
-                                day: 'numeric',
-                                month: 'long',
-                              })}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-3 text-sm">
-                            <Coffee className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Destino:</span>
-                            <span className="font-medium text-foreground">{sub.shipping_city}</span>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => toggleSubscription(sub.id, sub.status)}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 border border-muted-foreground/30 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
-                        >
-                          <Pause className="h-4 w-4" />
-                          Pausar suscripcion
-                        </button>
+            <div className="space-y-4">
+              {subscriptions.map(sub => (
+                <div key={sub.id} className="bg-card rounded-2xl shadow-soft overflow-hidden">
+                  <div className="p-5 sm:p-6">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div>
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold mb-2 ${STATUS_COLORS[sub.status] || STATUS_COLORS.cancelled}`}>
+                          {sub.status === 'active' ? 'Activa' : sub.status === 'paused' ? 'Pausada' : 'Cancelada'}
+                        </span>
+                        <h3 className="font-display text-lg font-bold text-foreground">
+                          {sub.product?.name || sub.planName}
+                        </h3>
+                        {sub.variant && (
+                          <p className="text-sm text-muted-foreground">{sub.variant.weight} · {sub.variant.grind}</p>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              {/* Paused Subscriptions */}
-              {pausedSubscriptions.length > 0 && (
-                <section>
-                  <h2 className="font-display text-xl font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Pause className="h-5 w-5 text-yellow-500" />
-                    Pausadas ({pausedSubscriptions.length})
-                  </h2>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {pausedSubscriptions.map(sub => (
-                      <div
-                        key={sub.id}
-                        className="bg-card rounded-xl p-6 shadow-soft opacity-75"
-                      >
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold mb-2">
-                              Pausada
-                            </span>
-                            <h3 className="font-display text-lg font-bold text-foreground">
-                              Plan {frequencyLabels[sub.frequency]}
-                            </h3>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-display text-2xl font-bold text-muted-foreground">
-                              ${sub.price.toLocaleString('es-CO')}
-                            </p>
-                            <p className="text-xs text-muted-foreground">por envio</p>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={() => toggleSubscription(sub.id, sub.status)}
-                          className="w-full flex items-center justify-center gap-2 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                        >
-                          <Play className="h-4 w-4" />
-                          Reactivar suscripcion
-                        </button>
+                      <div className="text-right">
+                        <p className="font-display text-2xl font-bold text-primary">${sub.price.toLocaleString('es-CO')}</p>
+                        <p className="text-xs text-muted-foreground">{FREQ_LABELS[sub.frequency] || sub.frequency}</p>
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="mt-4 grid sm:grid-cols-3 gap-3 text-sm">
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        <span>Próximo: <span className="text-foreground font-medium">
+                          {new Date(sub.nextDeliveryDate).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })}
+                        </span></span>
+                      </div>
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Coffee className="h-4 w-4" />
+                        <span>{sub.shippingCity}</span>
+                      </div>
+                      {sub.paymentMethod && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <CreditCard className="h-4 w-4" />
+                          <span>{sub.paymentMethod.franchise} •••• {sub.paymentMethod.mask.slice(-4)}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 flex items-center gap-2 flex-wrap">
+                      {sub.status === 'active' && (
+                        <button onClick={() => updateStatus(sub.id, 'paused')} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground">
+                          <Pause className="h-3.5 w-3.5" /> Pausar
+                        </button>
+                      )}
+                      {sub.status === 'paused' && (
+                        <button onClick={() => updateStatus(sub.id, 'active')} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                          <Play className="h-3.5 w-3.5" /> Reactivar
+                        </button>
+                      )}
+                      {sub.status !== 'cancelled' && (
+                        <button onClick={() => { if (confirm('¿Cancelar esta suscripción?')) updateStatus(sub.id, 'cancelled'); }} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors text-muted-foreground">
+                          <XCircle className="h-3.5 w-3.5" /> Cancelar
+                        </button>
+                      )}
+                      <button onClick={() => toggleExpanded(sub.id)} className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border border-border hover:bg-muted transition-colors text-muted-foreground ml-auto">
+                        {expandedId === sub.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        Historial
+                      </button>
+                    </div>
                   </div>
-                </section>
-              )}
+
+                  {/* Billing history accordion */}
+                  {expandedId === sub.id && (
+                    <div className="border-t border-border px-5 sm:px-6 py-4 bg-muted/30">
+                      <p className="text-sm font-semibold text-foreground mb-3">Historial de cobros</p>
+                      {loadingBilling === sub.id ? (
+                        <div className="flex items-center gap-2 text-muted-foreground text-sm"><Loader2 className="h-4 w-4 animate-spin" /> Cargando...</div>
+                      ) : (billingRecords[sub.id] || []).length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Sin cobros registrados.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {(billingRecords[sub.id] || []).map(r => (
+                            <div key={r.id} className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-3">
+                                <span className={`font-medium capitalize ${BILLING_STATUS_COLORS[r.status]}`}>
+                                  {r.status === 'approved' ? 'Aprobado' : r.status === 'rejected' ? 'Rechazado' : r.status === 'pending' ? 'Pendiente' : 'Fallido'}
+                                </span>
+                                <span className="text-muted-foreground">${r.amount.toLocaleString('es-CO')}</span>
+                              </div>
+                              <div className="text-right">
+                                {r.epaycoRef && <p className="text-xs text-muted-foreground font-mono">{r.epaycoRef}</p>}
+                                <p className="text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString('es-CO')}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
       </main>
-
       <Footer />
     </div>
   );

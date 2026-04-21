@@ -8,6 +8,13 @@ export async function GET() {
 
     const subscriptions = await prisma.subscription.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        product: { select: { name: true } },
+        variant: { select: { weight: true, grind: true } },
+        plan: { select: { name: true, frequencyLabel: true } },
+        paymentMethod: { select: { franchise: true, mask: true } },
+        user: { include: { profile: { select: { fullName: true } } } },
+      },
     });
 
     return NextResponse.json(subscriptions);

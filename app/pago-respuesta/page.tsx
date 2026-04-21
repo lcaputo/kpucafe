@@ -100,6 +100,33 @@ function PaymentResponse() {
 
   // Process initial params from ePayco redirect
   useEffect(() => {
+    // Handle direct tokenized payment response (new flow)
+    const directStatus = searchParams.get('status');
+    if (directStatus && !searchParams.get('ref_payco') && !searchParams.get('x_cod_response')) {
+      const statusMap: Record<string, string> = {
+        approved: 'success',
+        rejected: 'rejected',
+        pending: 'pending',
+      };
+      const mappedStatus = (statusMap[directStatus] || 'pending') as PaymentStatus;
+      const oid = searchParams.get('orderId');
+      const ref = searchParams.get('ref');
+      if (oid) setOrderId(oid);
+      if (ref) setTransaction({
+        ref_payco: ref,
+        invoice: oid || '',
+        description: 'KPU Cafe',
+        amount: '0',
+        currency: 'COP',
+        status: directStatus,
+        response: directStatus === 'approved' ? 'Aceptada' : directStatus,
+        payment_method: 'Tarjeta',
+      });
+      setStatus(mappedStatus);
+      if (mappedStatus === 'success') handleSuccess();
+      return;
+    }
+
     const refPayco = searchParams.get('ref_payco');
     const codResponse = searchParams.get('x_cod_response') || searchParams.get('x_cod_transaction_state');
     const invoice = searchParams.get('x_id_invoice') || searchParams.get('x_extra1');

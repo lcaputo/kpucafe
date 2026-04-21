@@ -20,7 +20,8 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useCart, useAuth } from '@/components/providers';
-import { useEpayco, EpaycoPaymentData } from '@/hooks/useEpayco';
+import CardForm, { CardTokenResult } from '@/components/CardForm';
+import { useCardPayment, SavedPaymentMethod } from '@/hooks/useCardPayment';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
@@ -103,7 +104,7 @@ export default function Checkout() {
   const router = useRouter();
   const { items, totalPrice, clearCart } = useCart();
   const { user, profile, signUp, signIn } = useAuth();
-  const { isLoaded, isLoading: epaycoLoading, openCheckout } = useEpayco();
+  const { savedMethods, loadingMethods, fetchMethods, saveCard, chargeSaved } = useCardPayment();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -123,6 +124,11 @@ export default function Checkout() {
   } | null>(null);
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
+
+  // Payment method state
+  const [selectedMethodId, setSelectedMethodId] = useState<string | null>(null);
+  const [showCardForm, setShowCardForm] = useState(false);
+  const [saveCardOption, setSaveCardOption] = useState(true);
 
   const [form, setForm] = useState<ShippingForm>({
     fullName: '',
@@ -166,6 +172,24 @@ export default function Checkout() {
       fetchSavedAddresses();
     }
   }, [user]);
+
+  // Fetch saved payment methods after auth resolves
+  useEffect(() => {
+    if (user) fetchMethods();
+  }, [user]);
+
+  // Initialize payment method selection
+  useEffect(() => {
+    if (!loadingMethods && user) {
+      if (savedMethods.length === 0) {
+        setShowCardForm(true);
+      } else {
+        const def = savedMethods.find(m => m.isDefault) || savedMethods[0];
+        setSelectedMethodId(def.id);
+        setShowCardForm(false);
+      }
+    }
+  }, [savedMethods, loadingMethods, user]);
 
   const fetchSavedAddresses = async () => {
     try {
@@ -340,96 +364,101 @@ export default function Checkout() {
     }
   };
 
-  const handlePayment = async () => {
-    if (!validateForm()) return;
-    if (!isLoaded) {
-      toast({ title: 'Cargando...', description: 'Espera mientras se carga el sistema de pagos' });
-      return;
+  // Helper: save address if needed (shared between payment handlers)
+  const maybeSaveAddress = async () => {
+    if (user && saveAddress && showNewAddress) {
+      await fetch('/api/shipping-addresses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: addressLabel,
+          fullName: form.fullName,
+          phone: form.phone,
+          address: form.address,
+          city: form.city,
+          department: form.department,
+          postalCode: form.postalCode || null,
+          isDefault: savedAddresses.length === 0,
+        }),
+      });
     }
+  };
 
+  // Helper: build order payload
+  const buildOrderPayload = () => ({
+    total: finalTotal,
+    shippingName: form.fullName,
+    shippingPhone: form.phone,
+    shippingAddress: form.address,
+    shippingCity: form.city,
+    shippingDepartment: form.department,
+    shippingPostalCode: form.postalCode || null,
+    notes: form.notes || null,
+    couponId: appliedCoupon?.id || null,
+    discountAmount: discountAmount || 0,
+    items: items.map((item: any) => ({
+      productName: item.name,
+      quantity: item.quantity,
+      unitPrice: item.price,
+      variantInfo: `${item.weight || ''} - ${item.grind || ''}`.trim().replace(/^-\s*|-\s*$/g, '').trim(),
+    })),
+  });
+
+  // Called when user clicks "Pagar" with a saved card
+  const handlePaymentWithSavedCard = async () => {
+    if (!validateForm()) return;
     setIsProcessing(true);
-
     try {
-      // Save address if requested and user is logged in
-      if (user && saveAddress && showNewAddress) {
-        await fetch('/api/shipping-addresses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            label: addressLabel,
-            fullName: form.fullName,
-            phone: form.phone,
-            address: form.address,
-            city: form.city,
-            department: form.department,
-            postalCode: form.postalCode || null,
-            isDefault: savedAddresses.length === 0,
-          }),
-        });
-      }
+      await maybeSaveAddress();
 
       const orderRes = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          total: finalTotal,
-          shippingName: form.fullName,
-          shippingPhone: form.phone,
-          shippingAddress: form.address,
-          shippingCity: form.city,
-          shippingDepartment: form.department,
-          shippingPostalCode: form.postalCode,
-          notes: form.notes,
-          couponId: appliedCoupon?.id || null,
-          discountAmount,
-          items: items.map((item) => ({
-            productName: item.name,
-            quantity: item.quantity,
-            unitPrice: item.price,
-            variantInfo: `${item.weight} - ${item.grind}`,
-          })),
-        }),
+        body: JSON.stringify(buildOrderPayload()),
       });
       const order = await orderRes.json();
+      if (!orderRes.ok) throw new Error(order.message || 'Error al crear pedido');
 
-      const paymentData: EpaycoPaymentData = {
-        name: 'Pedido KPU Cafe',
-        description: `Pedido #${order.id.slice(0, 8)}`,
-        invoice: order.id,
-        currency: 'cop',
-        amount: finalTotal.toString(),
-        tax_base: '0',
-        tax: '0',
-        country: 'co',
-        lang: 'es',
-        external: 'false',
-        confirmation: `${window.location.origin}/api/payments/epayco-webhook`,
-        response: `${window.location.origin}/pago-respuesta`,
-        name_billing: form.fullName,
-        address_billing: form.address,
-        mobilephone_billing: form.phone,
-        email_billing: form.email || user?.email || '',
-        extra1: order.id,
-        extra2: user?.id || 'guest',
-      };
+      const result = await chargeSaved(selectedMethodId!, finalTotal, order.id);
+      clearCart();
+      router.push(`/pago-respuesta?status=${result.status}&orderId=${order.id}&ref=${result.epaycoRef || ''}`);
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
-      // Increment coupon usage server-side
-      if (appliedCoupon) {
-        fetch('/api/coupons/validate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: appliedCoupon.code }),
-        }).catch(() => {});
+  // Called when CardForm succeeds (new card tokenized)
+  const handleCardTokenized = async (token: CardTokenResult) => {
+    if (!validateForm()) return;
+    setIsProcessing(true);
+    try {
+      await maybeSaveAddress();
+
+      const orderRes = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(buildOrderPayload()),
+      });
+      const order = await orderRes.json();
+      if (!orderRes.ok) throw new Error(order.message || 'Error al crear pedido');
+
+      // Save card to charge it (we always save temporarily to use chargeSaved)
+      const saved = await saveCard(token);
+      const methodId = saved.id;
+
+      const result = await chargeSaved(methodId, finalTotal, order.id);
+
+      // Clean up temporary card if user didn't want to save it
+      if (!saveCardOption || !user) {
+        await fetch(`/api/payment-methods/${methodId}`, { method: 'DELETE' });
       }
 
-      openCheckout(paymentData);
-    } catch (error: any) {
-      console.error('Error creating order:', error);
-      toast({
-        title: 'Error al procesar pedido',
-        description: error.message || 'Intenta de nuevo.',
-        variant: 'destructive',
-      });
+      clearCart();
+      router.push(`/pago-respuesta?status=${result.status}&orderId=${order.id}&ref=${result.epaycoRef || ''}`);
+    } catch (err: any) {
+      toast({ title: 'Error al pagar', description: err.message, variant: 'destructive' });
     } finally {
       setIsProcessing(false);
     }
@@ -967,23 +996,82 @@ export default function Checkout() {
                       </div>
                     </div>
 
-                    <button
-                      onClick={handlePayment}
-                      disabled={isProcessing || epaycoLoading || !isLoaded}
-                      className="w-full mt-6 btn-kpu flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isProcessing || epaycoLoading ? (
-                        <>
-                          <Loader2 className="h-5 w-5 animate-spin" />
-                          Procesando...
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="h-5 w-5" />
-                          Pagar ${finalTotal.toLocaleString('es-CO')}
-                        </>
+                    {/* Payment method section */}
+                    <div className="mt-6">
+                      <h4 className="font-semibold text-foreground flex items-center gap-2 mb-4">
+                        <CreditCard className="h-5 w-5 text-primary" />
+                        Metodo de Pago
+                      </h4>
+
+                      {/* Saved payment methods list */}
+                      {!showCardForm && savedMethods.length > 0 && (
+                        <div className="space-y-3 mb-4">
+                          {savedMethods.map(m => (
+                            <div
+                              key={m.id}
+                              onClick={() => setSelectedMethodId(m.id)}
+                              className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                                selectedMethodId === m.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                              }`}
+                            >
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
+                                selectedMethodId === m.id ? 'border-primary bg-primary' : 'border-muted-foreground/40'
+                              }`}>
+                                {selectedMethodId === m.id && <Check className="h-3 w-3 text-primary-foreground" />}
+                              </div>
+                              <CreditCard className="h-5 w-5 text-muted-foreground" />
+                              <div>
+                                <p className="text-sm font-medium capitalize">{m.franchise} &bull;&bull;&bull;&bull; {m.mask.slice(-4)}</p>
+                                <p className="text-xs text-muted-foreground">Vence {m.expMonth}/{m.expYear}</p>
+                              </div>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => { setShowCardForm(true); setSelectedMethodId(null); }}
+                            className="flex items-center gap-2 w-full p-3 rounded-xl border-2 border-dashed border-border hover:border-primary/40 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <Plus className="h-4 w-4" /> Usar otra tarjeta
+                          </button>
+                        </div>
                       )}
-                    </button>
+
+                      {/* New card form */}
+                      {showCardForm && (
+                        <div className="mb-4">
+                          <CardForm
+                            onSuccess={handleCardTokenized}
+                            submitLabel={`Pagar $${finalTotal.toLocaleString('es-CO')}`}
+                            loading={isProcessing}
+                            showSaveOption={!!user}
+                            saveCard={saveCardOption}
+                            onSaveCardChange={setSaveCardOption}
+                          />
+                          {savedMethods.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => { setShowCardForm(false); setSelectedMethodId(savedMethods[0].id); }}
+                              className="w-full mt-2 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                              Usar tarjeta guardada
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Pay button (only when saved card selected) */}
+                      {!showCardForm && selectedMethodId && (
+                        <button
+                          type="button"
+                          onClick={handlePaymentWithSavedCard}
+                          disabled={isProcessing || loadingMethods}
+                          className="w-full btn-kpu flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
+                        >
+                          {isProcessing ? <Loader2 className="h-5 w-5 animate-spin" /> : <CreditCard className="h-5 w-5" />}
+                          Pagar ${finalTotal.toLocaleString('es-CO')}
+                        </button>
+                      )}
+                    </div>
 
                   </div>
                 </div>

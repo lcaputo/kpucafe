@@ -57,6 +57,7 @@ model User {
   orders            Order[]
   subscriptions     Subscription[]
   shippingAddresses ShippingAddress[]
+  paymentMethods    PaymentMethod[]
 
   @@map("users")
 }
@@ -176,9 +177,10 @@ model Order {
   createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime    @updatedAt @map("updated_at") @db.Timestamptz
 
-  user   User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  coupon Coupon?    @relation(fields: [couponId], references: [id])
-  items  OrderItem[]
+  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  coupon         Coupon?         @relation(fields: [couponId], references: [id])
+  items          OrderItem[]
+  billingRecords BillingRecord[]
 
   @@map("orders")
 }
@@ -216,12 +218,18 @@ model Subscription {
   price            Int
   shippingAddress  String                @map("shipping_address")
   shippingCity     String                @map("shipping_city")
+  planId          String?               @map("plan_id") @db.Uuid
+  planName        String?               @map("plan_name")
+  paymentMethodId String?               @map("payment_method_id") @db.Uuid
   createdAt        DateTime              @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime              @updatedAt @map("updated_at") @db.Timestamptz
 
-  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  product Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
-  variant ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product       Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variant       ProductVariant?  @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  plan          SubscriptionPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  paymentMethod PaymentMethod?   @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+  billingRecords BillingRecord[]
 
   @@map("subscriptions")
 }
@@ -242,6 +250,8 @@ model SubscriptionPlan {
   sortOrder      Int      @default(0) @map("sort_order")
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  subscriptions Subscription[]
 
   @@map("subscription_plans")
 }
@@ -286,4 +296,61 @@ model ShippingAddress {
   user User @relation(fields: [userId], references: [id])
 
   @@map("shipping_addresses")
+}
+
+// -- Payment Methods --
+
+model PaymentMethod {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  tokenId    String   @map("token_id")
+  customerId String   @map("customer_id")
+  franchise  String
+  mask       String
+  expMonth   String   @map("exp_month")
+  expYear    String   @map("exp_year")
+  cardHolder String   @map("card_holder")
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions  Subscription[]
+  billingRecords BillingRecord[]
+
+  @@index([userId])
+  @@map("payment_methods")
+}
+
+// -- Billing Records --
+
+enum BillingStatus {
+  approved
+  rejected
+  pending
+  failed
+
+  @@map("billing_status")
+}
+
+model BillingRecord {
+  id              String        @id @default(uuid()) @db.Uuid
+  subscriptionId  String        @map("subscription_id") @db.Uuid
+  orderId         String?       @map("order_id") @db.Uuid
+  paymentMethodId String?       @map("payment_method_id") @db.Uuid
+  amount          Int
+  status          BillingStatus
+  epaycoRef       String?       @map("epayco_ref")
+  errorMessage    String?       @map("error_message")
+  retryCount      Int           @default(0) @map("retry_count")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  subscription  Subscription   @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  order         Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  paymentMethod PaymentMethod? @relation(fields: [paymentMethodId], references: [id], onDelete: SetNull)
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@map("billing_records")
 }
