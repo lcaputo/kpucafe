@@ -58,6 +58,7 @@ model User {
   subscriptions     Subscription[]
   shippingAddresses ShippingAddress[]
   paymentMethods    PaymentMethod[]
+  appLogs           AppLog[]
 
   @@map("users")
 }
@@ -353,4 +354,24 @@ model BillingRecord {
   @@index([subscriptionId])
   @@index([status])
   @@map("billing_records")
+}
+
+model AppLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  level     String
+  type      String
+  action    String
+  message   String
+  userId    String?  @map("user_id") @db.Uuid
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  metadata  Json?
+  error     String?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([level])
+  @@index([type])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("app_logs")
 }
