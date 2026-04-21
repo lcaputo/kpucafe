@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
+import { log } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
       });
     });
 
+    log({ level: 'info', type: 'order', action: 'create_order', message: 'Pedido creado', userId: session.id, metadata: { orderId: order?.id, total: order?.total } });
     return NextResponse.json(order, { status: 201 });
   } catch (err: any) {
     if (err.message === 'Unauthorized') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

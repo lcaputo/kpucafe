@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
+import { log } from '@/lib/logger';
 
 export async function DELETE(
   _req: Request,
@@ -16,6 +17,7 @@ export async function DELETE(
     if (!method) return NextResponse.json({ message: 'No encontrado' }, { status: 404 });
 
     await prisma.paymentMethod.delete({ where: { id } });
+    log({ level: 'info', type: 'payment', action: 'card_deleted', message: 'Tarjeta eliminada', userId: session.id, metadata: { paymentMethodId: id } });
 
     // If no methods left, remove paymentMethodId from active subscriptions
     const remaining = await prisma.paymentMethod.count({ where: { userId: session.id } });

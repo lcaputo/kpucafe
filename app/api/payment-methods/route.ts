@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { createCustomer, EpaycoError } from '@/lib/epayco';
+import { log } from '@/lib/logger';
 
 // GET — list saved cards for current user
 export async function GET() {
@@ -87,6 +88,7 @@ export async function POST(req: Request) {
       });
     }
 
+    log({ level: 'info', type: 'payment', action: 'card_saved', message: 'Tarjeta guardada', userId: session.id, metadata: { franchise: method.franchise, mask: method.mask } });
     return NextResponse.json({
       id: method.id,
       franchise: method.franchise,

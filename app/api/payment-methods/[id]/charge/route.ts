@@ -2,15 +2,22 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { chargeCard, EpaycoError } from '@/lib/epayco';
+import { log } from '@/lib/logger';
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  let session: Awaited<ReturnType<typeof requireAuth>> | undefined;
+  let targetOrderId: string | undefined;
+  let amount: number | undefined;
+
   try {
-    const session = await requireAuth();
+    session = await requireAuth();
     const { id } = await params;
-    const { amount, orderId, subscriptionId } = await req.json();
+    let orderId: string | undefined;
+    let subscriptionId: string | undefined;
+    ({ amount, orderId, subscriptionId } = await req.json());
 
     if (!amount || (!orderId && !subscriptionId)) {
       return NextResponse.json({ message: 'amount y (orderId o subscriptionId) requeridos' }, { status: 400 });
@@ -26,7 +33,7 @@ export async function POST(
       include: { profile: true },
     });
 
-    let targetOrderId = orderId as string | undefined;
+    targetOrderId = orderId as string | undefined;
 
     if (!orderId && subscriptionId) {
       const sub = await prisma.subscription.findUnique({
@@ -82,11 +89,13 @@ export async function POST(
         where: { id: targetOrderId },
         data: { status: 'paid', paymentReference: result.epaycoRef },
       });
+      log({ level: 'info', type: 'payment', action: 'charge_approved', message: 'Cobro aprobado', userId: session.id, metadata: { orderId: targetOrderId, amount, epaycoRef: result.epaycoRef } });
     } else if (result.status === 'rejected') {
       await prisma.order.update({
         where: { id: targetOrderId },
         data: { status: 'cancelled' },
       });
+      log({ level: 'warn', type: 'payment', action: 'charge_rejected', message: 'Cobro rechazado', userId: session.id, metadata: { orderId: targetOrderId, amount, epaycoRef: result.epaycoRef } });
     }
 
     // Create billing record when charging for a subscription
@@ -110,7 +119,10 @@ export async function POST(
       message: result.message,
     });
   } catch (err: any) {
-    if (err instanceof EpaycoError) return NextResponse.json({ message: err.message }, { status: 400 });
+    if (err instanceof EpaycoError) {
+      log({ level: 'error', type: 'payment', action: 'charge_failed', message: 'Error al procesar cobro', userId: session?.id, metadata: { orderId: targetOrderId, amount }, error: err.message });
+      return NextResponse.json({ message: err.message }, { status: 400 });
+    }
     if (err.message === 'Unauthorized') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     return NextResponse.json({ message: err.message }, { status: 500 });
   }
