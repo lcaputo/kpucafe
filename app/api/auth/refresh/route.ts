@@ -31,7 +31,7 @@ export async function POST() {
       user: {
         id: user.id,
         email: user.email,
-        roles: user.roles.map((r) => r.role),
+        roles: user.roles.map((r: { role: string }) => r.role),
         profile: user.profile,
       },
     });
