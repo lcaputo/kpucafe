@@ -177,9 +177,10 @@ model Order {
   createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime    @updatedAt @map("updated_at") @db.Timestamptz
 
-  user   User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  coupon Coupon?    @relation(fields: [couponId], references: [id])
-  items  OrderItem[]
+  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  coupon         Coupon?         @relation(fields: [couponId], references: [id])
+  items          OrderItem[]
+  billingRecords BillingRecord[]
 
   @@map("orders")
 }
@@ -343,6 +344,7 @@ model BillingRecord {
   createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz
 
   subscription  Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  order         Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
   paymentMethod PaymentMethod @relation(fields: [paymentMethodId], references: [id])
 
   @@map("billing_records")
