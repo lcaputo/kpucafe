@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { computeNextBillingDate } from '@/lib/billing';
+import { log } from '@/lib/logger';
 
 export async function GET() {
   try {
@@ -68,6 +69,7 @@ export async function POST(req: Request) {
       },
     });
 
+    log({ level: 'info', type: 'subscription', action: 'subscription_created', message: 'Suscripción creada', userId: session.id, metadata: { subscriptionId: subscription.id, planId, price } });
     return NextResponse.json(subscription, { status: 201 });
   } catch (err: any) {
     if (err.message === 'Unauthorized') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

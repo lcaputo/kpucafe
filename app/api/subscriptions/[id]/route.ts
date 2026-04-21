@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
+import { log } from '@/lib/logger';
 
 export async function GET(
   _req: Request,
@@ -55,6 +56,19 @@ export async function PATCH(
       data: { status },
     });
     if (result.count === 0) return NextResponse.json({ message: 'No encontrada' }, { status: 404 });
+    const actionMap: Record<string, string> = {
+      active: 'subscription_reactivated',
+      paused: 'subscription_paused',
+      cancelled: 'subscription_cancelled',
+    };
+    log({
+      level: status === 'cancelled' || status === 'paused' ? 'warn' : 'info',
+      type: 'subscription',
+      action: actionMap[status] || `subscription_${status}`,
+      message: `Suscripción ${status}`,
+      userId: session.id,
+      metadata: { subscriptionId: id },
+    });
     return NextResponse.json({ success: true });
   } catch (err: any) {
     if (err.message === 'Unauthorized') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { chargeCard, EpaycoError } from '@/lib/epayco';
 import { computeNextBillingDate } from '@/lib/billing';
+import { log } from '@/lib/logger';
 
 export async function POST(req: Request) {
   // Verify secret
@@ -10,6 +11,7 @@ export async function POST(req: Request) {
   if (!secret || auth !== `Bearer ${secret}`) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
+  log({ level: 'info', type: 'system', action: 'billing_cron_run', message: 'Inicio de ciclo de cobros automáticos' });
 
   const today = new Date();
   today.setHours(23, 59, 59, 999); // include everything up to end of today
@@ -115,15 +117,18 @@ export async function POST(req: Request) {
           data: { status: 'paid', paymentReference: epaycoRef },
         });
         approved++;
+        log({ level: 'info', type: 'subscription', action: 'billing_approved', message: 'Cobro automático aprobado', userId: sub.userId, metadata: { subscriptionId: sub.id, amount: sub.price, epaycoRef } });
       } else {
         await prisma.order.update({ where: { id: order.id }, data: { status: 'cancelled' } });
         failed++;
+        log({ level: 'warn', type: 'subscription', action: 'billing_failed', message: 'Cobro automático rechazado', userId: sub.userId, metadata: { subscriptionId: sub.id, amount: sub.price } });
         if (retryCount >= 2) {
           await prisma.subscription.update({
             where: { id: sub.id },
             data: { status: 'paused' },
           });
           paused++;
+          log({ level: 'warn', type: 'subscription', action: 'subscription_auto_paused', message: 'Suscripción pausada por cobros fallidos consecutivos', userId: sub.userId, metadata: { subscriptionId: sub.id } });
         }
       }
     } catch (err: any) {
@@ -131,12 +136,14 @@ export async function POST(req: Request) {
       errorMessage = err instanceof EpaycoError ? err.message : String(err.message);
       await prisma.order.update({ where: { id: order.id }, data: { status: 'cancelled' } });
       failed++;
+      log({ level: 'error', type: 'subscription', action: 'billing_failed', message: 'Error inesperado en cobro automático', userId: sub.userId, metadata: { subscriptionId: sub.id, amount: sub.price }, error: err instanceof Error ? err.message : String(err) });
       if (retryCount >= 2) {
         await prisma.subscription.update({
           where: { id: sub.id },
           data: { status: 'paused' },
         });
         paused++;
+        log({ level: 'warn', type: 'subscription', action: 'subscription_auto_paused', message: 'Suscripción pausada por cobros fallidos consecutivos', userId: sub.userId, metadata: { subscriptionId: sub.id } });
       }
     }
 
@@ -154,6 +161,7 @@ export async function POST(req: Request) {
     });
   }
 
+  log({ level: 'info', type: 'system', action: 'billing_cron_run', message: `Ciclo completado: ${approved} aprobados, ${failed} fallidos, ${paused} pausados`, metadata: { processed: subscriptions.length, approved, failed, paused } });
   return NextResponse.json({
     processed: subscriptions.length,
     approved,

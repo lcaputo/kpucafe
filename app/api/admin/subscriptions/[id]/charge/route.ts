@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { chargeCard, EpaycoError } from '@/lib/epayco';
 import { computeNextBillingDate } from '@/lib/billing';
+import { log } from '@/lib/logger';
 
 export async function POST(
   _req: Request,
@@ -65,6 +66,7 @@ export async function POST(
         retryCount: 0,
       },
     });
+    log({ level: 'info', type: 'admin', action: 'admin_charge_retry', message: `Reintento de cobro admin: ${result.status}`, metadata: { subscriptionId: id, status: result.status, epaycoRef: result.epaycoRef } });
 
     if (result.status === 'approved') {
       const nextDate = computeNextBillingDate(
