@@ -15,5 +15,16 @@ export interface LogParams {
 }
 
 export function log(params: LogParams): void {
-  prisma.appLog.create({ data: params }).catch(() => {});
+  prisma.appLog.create({
+    data: {
+      level: params.level,
+      type: params.type,
+      action: params.action,
+      message: params.message,
+      userId: params.userId,
+      metadata: params.metadata as any,
+      error: params.error,
+      ipAddress: params.ipAddress,
+    },
+  }).catch(() => {});
 }

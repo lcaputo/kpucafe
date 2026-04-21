@@ -211,7 +211,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/60">
           <div>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-display font-bold text-foreground">
+              <span className="text-2xl font-display text-foreground">
                 ${currentPrice.toLocaleString('es-CO')}
               </span>
               <span className="text-muted-foreground text-xs font-medium">COP</span>

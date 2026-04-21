@@ -89,7 +89,7 @@ export default function ProductsSection({ products, categories }: ProductsSectio
             Nuestra Seleccion
           </div>
           <h2
-            className="font-display font-bold text-foreground mb-4"
+            className="font-display text-foreground mb-4"
             style={{ fontSize: 'clamp(2.2rem, 4.5vw, 3.5rem)' }}
           >
             Cafe de especialidad

@@ -6,7 +6,7 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: ['/admin/', '/api/', '/checkout', '/mis-pedidos', '/mis-suscripciones', '/pago-respuesta'],
+        disallow: ['/admin/', '/api/', '/checkout', '/mis-pedidos', '/mis-suscripciones'],
       },
     ],
     sitemap: 'https://kpucafe.com/sitemap.xml',

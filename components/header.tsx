@@ -14,6 +14,9 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -144,11 +147,11 @@ export default function Header() {
 
             <button
               onClick={() => setIsCartOpen(true)}
-              aria-label={`Carrito de compras, ${totalItems} artículos`}
+              aria-label={`Carrito de compras, ${mounted ? totalItems : 0} artículos`}
               className="relative p-2.5 text-secondary-foreground/75 hover:text-secondary-foreground transition-colors rounded-xl hover:bg-secondary-foreground/10 cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
               <ShoppingBag className="h-5 w-5" />
-              {totalItems > 0 && (
+              {mounted && totalItems > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[11px] font-bold h-5 w-5 rounded-full flex items-center justify-center leading-none">
                   {totalItems > 9 ? '9+' : totalItems}
                 </span>

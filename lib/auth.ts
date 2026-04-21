@@ -18,7 +18,7 @@ export async function comparePassword(password: string, hash: string) {
 export async function signAccessToken(payload: { sub: string; email: string }) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
-    .setExpirationTime('15m')
+    .setExpirationTime('7d')
     .sign(JWT_SECRET);
 }
 
@@ -46,7 +46,7 @@ export async function setAuthCookies(accessToken: string, refreshToken: string) 
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
-    maxAge: 15 * 60,
+    maxAge: 7 * 24 * 60 * 60,
   });
   cookieStore.set('refresh_token', refreshToken, {
     httpOnly: true,
