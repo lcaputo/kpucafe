@@ -17,6 +17,7 @@ import {
   Ticket,
   CreditCard,
   LayoutGrid,
+  ScrollText,
 } from 'lucide-react';
 
 const navItems = [
@@ -29,6 +30,7 @@ const navItems = [
   { path: '/admin/suscripciones', icon: RefreshCw, label: 'Suscripciones' },
   { path: '/admin/planes', icon: CreditCard, label: 'Planes' },
   { path: '/admin/cupones', icon: Ticket, label: 'Cupones' },
+  { path: '/admin/logs', icon: ScrollText, label: 'Logs' },
 ];
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
