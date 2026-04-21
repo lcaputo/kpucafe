@@ -421,7 +421,7 @@ export default function Checkout() {
 
       const result = await chargeSaved(selectedMethodId!, finalTotal, order.id);
       clearCart();
-      router.push(`/pago-respuesta?status=${result.status}&orderId=${order.id}&ref=${result.epaycoRef || ''}`);
+      router.push(`/pedido/${order.id}`);
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     } finally {
@@ -456,7 +456,7 @@ export default function Checkout() {
       }
 
       clearCart();
-      router.push(`/pago-respuesta?status=${result.status}&orderId=${order.id}&ref=${result.epaycoRef || ''}`);
+      router.push(`/pedido/${order.id}`);
     } catch (err: any) {
       toast({ title: 'Error al pagar', description: err.message, variant: 'destructive' });
     } finally {
@@ -990,7 +990,7 @@ export default function Checkout() {
                       )}
                       <div className="flex justify-between pt-2 border-t border-border">
                         <span className="font-semibold text-foreground">Total</span>
-                        <span className="font-display text-xl font-bold text-primary">
+                        <span className="font-display text-xl text-primary">
                           ${finalTotal.toLocaleString('es-CO')}
                         </span>
                       </div>
