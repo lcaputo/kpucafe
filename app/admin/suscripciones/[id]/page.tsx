@@ -52,6 +52,7 @@ export default function AdminSubscriptionDetailPage({ params }: { params: Promis
         fetch(`/api/admin/subscriptions/${id}`),
         fetch(`/api/admin/subscriptions/${id}/billing`),
       ]);
+      if (!subRes.ok || !billingRes.ok) throw new Error('Error al cargar');
       setSub(await subRes.json());
       setBilling(await billingRes.json());
     } catch {
@@ -71,7 +72,7 @@ export default function AdminSubscriptionDetailPage({ params }: { params: Promis
         body: JSON.stringify({ status }),
       });
       toast({ title: 'Estado actualizado' });
-      fetchData();
+      await fetchData();
     } catch {
       toast({ title: 'Error', variant: 'destructive' });
     }
@@ -82,7 +83,7 @@ export default function AdminSubscriptionDetailPage({ params }: { params: Promis
       const res = await fetch(`/api/admin/subscriptions/${id}/charge`, { method: 'POST' });
       const data = await res.json();
       toast({ title: data.status === 'approved' ? 'Cobro aprobado' : `Cobro ${data.status}` });
-      fetchData();
+      await fetchData();
     } catch {
       toast({ title: 'Error al cobrar', variant: 'destructive' });
     }

@@ -51,6 +51,7 @@ export default function AdminSubscriptionsPage() {
         fetch('/api/admin/subscriptions'),
         fetch('/api/admin/subscriptions/stats'),
       ]);
+      if (!subsRes.ok || !statsRes.ok) throw new Error('Error al cargar datos');
       setSubs(await subsRes.json());
       setStats(await statsRes.json());
     } catch {
@@ -70,7 +71,7 @@ export default function AdminSubscriptionsPage() {
         body: JSON.stringify({ status }),
       });
       toast({ title: `Suscripción ${status === 'active' ? 'activada' : status === 'paused' ? 'pausada' : 'cancelada'}` });
-      fetchData();
+      await fetchData();
     } catch {
       toast({ title: 'Error', variant: 'destructive' });
     }
@@ -82,7 +83,7 @@ export default function AdminSubscriptionsPage() {
       const data = await res.json();
       if (data.status === 'approved') toast({ title: 'Cobro aprobado' });
       else toast({ title: `Cobro ${data.status}`, description: data.epaycoRef || '', variant: 'destructive' });
-      fetchData();
+      await fetchData();
     } catch {
       toast({ title: 'Error al reintentar cobro', variant: 'destructive' });
     }

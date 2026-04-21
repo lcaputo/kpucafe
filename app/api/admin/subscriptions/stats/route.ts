@@ -34,8 +34,9 @@ export async function GET() {
       mrr: mrrResult._sum.price || 0,
       churnRate,
     });
-  } catch (err: any) {
-    if (err.message === 'Unauthorized') return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-    return NextResponse.json({ message: err.message }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Internal server error';
+    if (message === 'Unauthorized') return NextResponse.json({ message }, { status: 401 });
+    return NextResponse.json({ message }, { status: 500 });
   }
 }

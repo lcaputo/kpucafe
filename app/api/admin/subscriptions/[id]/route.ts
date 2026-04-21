@@ -36,6 +36,10 @@ export async function PATCH(
     await requireAdmin();
     const { id } = await params;
     const { status } = await req.json();
+    const allowed = ['active', 'paused', 'cancelled'];
+    if (!allowed.includes(status)) {
+      return NextResponse.json({ message: 'Estado no válido' }, { status: 400 });
+    }
     await prisma.subscription.update({ where: { id }, data: { status } });
     return NextResponse.json({ success: true });
   } catch (err: unknown) {
