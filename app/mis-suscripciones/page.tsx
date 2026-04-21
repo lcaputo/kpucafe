@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/components/providers';
@@ -65,21 +65,22 @@ export default function MisSuscripciones() {
     if (!authLoading && !user) router.replace('/auth');
   }, [authLoading, user, router]);
 
-  useEffect(() => {
-    if (user) fetchSubscriptions();
-  }, [user]);
-
-  const fetchSubscriptions = async () => {
+  const fetchSubscriptions = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch('/api/subscriptions');
+      if (!res.ok) throw new Error('Error al cargar suscripciones');
       setSubscriptions((await res.json()) || []);
     } catch {
       toast({ title: 'Error al cargar suscripciones', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    if (user) fetchSubscriptions();
+  }, [user, fetchSubscriptions]);
 
   const toggleExpanded = async (id: string) => {
     if (expandedId === id) { setExpandedId(null); return; }
@@ -100,11 +101,12 @@ export default function MisSuscripciones() {
 
   const updateStatus = async (id: string, status: string) => {
     try {
-      await fetch(`/api/subscriptions/${id}`, {
+      const res = await fetch(`/api/subscriptions/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status }),
       });
+      if (!res.ok) throw new Error('Error al actualizar estado');
       const label = status === 'active' ? 'reactivada' : status === 'paused' ? 'pausada' : 'cancelada';
       toast({ title: `Suscripción ${label}` });
       fetchSubscriptions();

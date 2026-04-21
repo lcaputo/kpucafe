@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 
 export interface SavedPaymentMethod {
   id: string;
@@ -25,8 +25,6 @@ export function useCardPayment() {
       setLoadingMethods(false);
     }
   }, []);
-
-  useEffect(() => { fetchMethods(); }, [fetchMethods]);
 
   const saveCard = useCallback(async (token: {
     tokenId: string;

@@ -104,7 +104,7 @@ export default function Checkout() {
   const router = useRouter();
   const { items, totalPrice, clearCart } = useCart();
   const { user, profile, signUp, signIn } = useAuth();
-  const { savedMethods, loadingMethods, saveCard, chargeSaved } = useCardPayment();
+  const { savedMethods, loadingMethods, fetchMethods, saveCard, chargeSaved } = useCardPayment();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -171,6 +171,11 @@ export default function Checkout() {
     if (user) {
       fetchSavedAddresses();
     }
+  }, [user]);
+
+  // Fetch saved payment methods after auth resolves
+  useEffect(() => {
+    if (user) fetchMethods();
   }, [user]);
 
   // Initialize payment method selection

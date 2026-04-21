@@ -42,7 +42,7 @@ function SubscribeWizardInner() {
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { savedMethods, loadingMethods, saveCard, chargeSaved } = useCardPayment();
+  const { savedMethods, loadingMethods, fetchMethods, saveCard, chargeSaved } = useCardPayment();
 
   const planId = searchParams.get('plan');
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -65,6 +65,11 @@ function SubscribeWizardInner() {
       router.replace(`/auth?next=/suscribirse${planId ? `?plan=${planId}` : ''}`);
     }
   }, [authLoading, user, router, planId]);
+
+  // Fetch saved payment methods after auth resolves
+  useEffect(() => {
+    if (user) fetchMethods();
+  }, [user]);
 
   // Load plan and products
   useEffect(() => {

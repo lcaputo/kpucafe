@@ -22,6 +22,10 @@ export default function MisMetodosDePago() {
     if (!authLoading && !user) router.replace('/auth');
   }, [authLoading, user, router]);
 
+  useEffect(() => {
+    if (user) fetchMethods();
+  }, [user]);
+
   const handleNewCard = async (token: CardTokenResult) => {
     setSaving(true);
     try {
