@@ -55,28 +55,35 @@ export async function POST(req: Request) {
 
     let method;
     if (existing) {
-      method = await prisma.paymentMethod.update({
-        where: { id: existing.id },
-        data: { tokenId, customerId, isDefault: true },
+      method = await prisma.$transaction(async (tx) => {
+        await tx.paymentMethod.updateMany({
+          where: { userId: session.id },
+          data: { isDefault: false },
+        });
+        return tx.paymentMethod.update({
+          where: { id: existing.id },
+          data: { tokenId, customerId, isDefault: true },
+        });
       });
     } else {
-      // Mark all others as non-default
-      await prisma.paymentMethod.updateMany({
-        where: { userId: session.id },
-        data: { isDefault: false },
-      });
-      method = await prisma.paymentMethod.create({
-        data: {
-          userId: session.id,
-          tokenId,
-          customerId,
-          franchise: franchise || '',
-          mask: mask || '',
-          expMonth: expMonth || '',
-          expYear: expYear || '',
-          cardHolder: cardHolder || '',
-          isDefault: true,
-        },
+      method = await prisma.$transaction(async (tx) => {
+        await tx.paymentMethod.updateMany({
+          where: { userId: session.id },
+          data: { isDefault: false },
+        });
+        return tx.paymentMethod.create({
+          data: {
+            userId: session.id,
+            tokenId,
+            customerId,
+            franchise: franchise || '',
+            mask: mask || '',
+            expMonth: expMonth || '',
+            expYear: expYear || '',
+            cardHolder: cardHolder || '',
+            isDefault: true,
+          },
+        });
       });
     }
 
