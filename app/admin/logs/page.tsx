@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, RefreshCw, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 
@@ -82,10 +82,10 @@ export default function AdminLogsPage() {
     } finally {
       setLoading(false);
     }
-  }, [level, type, email, from, to, page, toast]);
+  }, [level, type, email, from, to, toast]);
 
-  useEffect(() => { fetchLogs(1); setPage(1); }, [level, type, email, from, to]);
-  useEffect(() => { fetchLogs(page); }, [page]);
+  useEffect(() => { setPage(1); }, [level, type, email, from, to]);
+  useEffect(() => { fetchLogs(page); }, [page, fetchLogs]);
 
   useEffect(() => {
     if (!autoRefresh) return;
@@ -100,8 +100,11 @@ export default function AdminLogsPage() {
       const res = await fetch('/api/admin/logs/cleanup', { method: 'DELETE' });
       const data = await res.json();
       toast({ title: `${data.deleted} logs eliminados` });
-      fetchLogs(1);
-      setPage(1);
+      if (page === 1) {
+        await fetchLogs(1);
+      } else {
+        setPage(1);
+      }
     } catch {
       toast({ title: 'Error al limpiar', variant: 'destructive' });
     } finally {
@@ -227,8 +230,8 @@ export default function AdminLogsPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {data.logs.map(log => (
-                  <>
-                    <tr key={log.id} className="hover:bg-muted/30 transition-colors">
+                  <React.Fragment key={log.id}>
+                    <tr className="hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                         {new Date(log.createdAt).toLocaleString('es-CO')}
                       </td>
@@ -257,7 +260,7 @@ export default function AdminLogsPage() {
                       </td>
                     </tr>
                     {expandedId === log.id && (
-                      <tr key={`${log.id}-detail`} className="bg-muted/20">
+                      <tr className="bg-muted/20">
                         <td colSpan={7} className="px-6 py-4">
                           {log.error && (
                             <div className="mb-3">
@@ -281,7 +284,7 @@ export default function AdminLogsPage() {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
