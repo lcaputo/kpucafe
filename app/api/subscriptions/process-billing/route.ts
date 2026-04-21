@@ -33,6 +33,18 @@ export async function POST(req: Request) {
   for (const sub of subscriptions) {
     if (!sub.paymentMethod) continue;
 
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const alreadyBilledToday = await prisma.billingRecord.findFirst({
+      where: {
+        subscriptionId: sub.id,
+        createdAt: { gte: startOfToday },
+        status: { in: ['approved', 'pending'] },
+      },
+    });
+    if (alreadyBilledToday) continue;
+
     // Create order for this billing cycle
     const order = await prisma.order.create({
       data: {
@@ -54,12 +66,19 @@ export async function POST(req: Request) {
       },
     });
 
-    // Get current retry count
-    const lastFailed = await prisma.billingRecord.findFirst({
-      where: { subscriptionId: sub.id, status: { in: ['rejected', 'failed'] } },
+    // Get current retry count (consecutive failures)
+    const recentRecords = await prisma.billingRecord.findMany({
+      where: { subscriptionId: sub.id },
       orderBy: { createdAt: 'desc' },
+      take: 3,
     });
-    const retryCount = lastFailed ? lastFailed.retryCount + 1 : 0;
+    // Count consecutive failures from the most recent record
+    let consecutiveFailures = 0;
+    for (const rec of recentRecords) {
+      if (rec.status === 'rejected' || rec.status === 'failed') consecutiveFailures++;
+      else break;
+    }
+    const retryCount = consecutiveFailures;
 
     let chargeStatus: 'approved' | 'rejected' | 'failed' = 'failed';
     let epaycoRef: string | null = null;

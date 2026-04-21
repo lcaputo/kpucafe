@@ -15,7 +15,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Datos incompletos' }, { status: 400 });
     }
 
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    const order = await prisma.order.findFirst({
+      where: { id: orderId, userId: session.id },
+    });
     if (!order) return NextResponse.json({ message: 'Pedido no encontrado' }, { status: 404 });
 
     if (order.status !== 'pending') {

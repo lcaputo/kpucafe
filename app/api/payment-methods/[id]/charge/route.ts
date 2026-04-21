@@ -57,7 +57,7 @@ export async function POST(
       targetOrderId = newOrder.id;
     }
 
-    const order = await prisma.order.findUnique({ where: { id: targetOrderId } });
+    const order = await prisma.order.findFirst({ where: { id: targetOrderId, userId: session.id } });
     if (!order) return NextResponse.json({ message: 'Pedido no encontrado' }, { status: 404 });
 
     if (order.status !== 'pending') {

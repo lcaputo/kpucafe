@@ -40,6 +40,16 @@ export async function PATCH(
       return NextResponse.json({ message: 'Estado no válido' }, { status: 400 });
     }
 
+    // Fetch current status to prevent re-activating cancelled subscriptions
+    const existing = await prisma.subscription.findFirst({
+      where: { id, userId: session.id },
+      select: { status: true },
+    });
+    if (!existing) return NextResponse.json({ message: 'No encontrada' }, { status: 404 });
+    if (existing.status === 'cancelled' && status !== 'cancelled') {
+      return NextResponse.json({ message: 'No se puede reactivar una suscripción cancelada' }, { status: 409 });
+    }
+
     const result = await prisma.subscription.updateMany({
       where: { id, userId: session.id },
       data: { status },
