@@ -54,3 +54,4 @@ next-env.d.ts
 # uploads (keep directory, ignore contents)
 uploads/product-images/*
 !uploads/product-images/.gitkeep
+.worktrees/
