@@ -1,126 +1,221 @@
 import Link from 'next/link';
-import { Check, Coffee, Truck, CreditCard } from 'lucide-react';
+import { Check, Coffee, Truck, CreditCard, Sparkles } from 'lucide-react';
 
 interface SubscriptionSectionProps {
   plans: any[];
 }
 
+const HOW_IT_WORKS = [
+  {
+    icon: Coffee,
+    title: 'Elige tu cafe',
+    description: 'Selecciona tu cafe favorito, presentacion y tipo de molido',
+  },
+  {
+    icon: CreditCard,
+    title: 'Cobro automatico',
+    description: 'Tu tarjeta se cobra automaticamente segun tu plan',
+  },
+  {
+    icon: Truck,
+    title: 'Recibe en casa',
+    description: 'Envio gratis directamente a la puerta de tu casa',
+  },
+];
+
 export default function SubscriptionSection({ plans }: SubscriptionSectionProps) {
   return (
-    <section id="suscripciones" aria-label="Planes de suscripcion" className="py-20 bg-gradient-coffee relative overflow-hidden">
-      {/* Decorative Elements */}
-      <div className="absolute top-0 left-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+    <section
+      id="suscripciones"
+      aria-label="Planes de suscripcion"
+      className="pt-32 pb-24 bg-gradient-coffee relative overflow-hidden"
+    >
+      {/* Top wave divider */}
+      <div className="absolute top-0 left-0 right-0 leading-[0] pointer-events-none">
+        <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full block" aria-hidden="true">
+          <path
+            d="M0 0L60 7C120 13 240 27 360 33C480 40 600 40 720 37C840 33 960 27 1080 23C1200 20 1320 20 1380 20L1440 20V0H1380C1320 0 1200 0 1080 0C960 0 840 0 720 0C600 0 480 0 360 0C240 0 120 0 60 0H0Z"
+            fill="hsl(30 25% 97%)"
+          />
+        </svg>
+      </div>
+
+      {/* Liquid ambient blobs */}
+      <div className="absolute top-0 left-0 w-80 h-80 bg-primary/12 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-primary/8 rounded-full blur-[80px] pointer-events-none" />
 
       <div className="container mx-auto px-4 relative z-10">
-        {/* Section Header */}
+        {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <span className="inline-block px-4 py-2 bg-primary/20 text-primary rounded-full text-sm font-semibold mb-4">
+          <div
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-semibold mb-6"
+            style={{
+              background: 'hsl(14 82% 53% / 0.18)',
+              border: '1px solid hsl(14 82% 53% / 0.28)',
+              color: 'hsl(14 82% 68%)',
+            }}
+          >
+            <Sparkles className="h-3.5 w-3.5" />
             Suscripciones
-          </span>
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-secondary-foreground mb-4">
+          </div>
+          <h2
+            className="font-display font-bold text-secondary-foreground mb-4"
+            style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)' }}
+          >
             Cafe fresco en tu puerta
           </h2>
-          <p className="text-secondary-foreground/80 text-lg">
+          <p className="text-secondary-foreground/70 text-lg leading-relaxed">
             Suscribete y recibe cafe recien tostado directamente en tu hogar. Cobro automatico y
             envio gratis.
           </p>
         </div>
 
-        {/* How it Works */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <div className="text-center">
-            <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Coffee className="h-8 w-8 text-primary" />
+        {/* How it works */}
+        <div className="grid md:grid-cols-3 gap-6 mb-20">
+          {HOW_IT_WORKS.map(({ icon: Icon, title, description }, i) => (
+            <div
+              key={title}
+              className="text-center p-6 rounded-2xl transition-all duration-300 hover:-translate-y-1"
+              style={{
+                background: 'hsl(0 0% 100% / 0.06)',
+                border: '1px solid hsl(0 0% 100% / 0.10)',
+                backdropFilter: 'blur(12px)',
+              }}
+            >
+              <div
+                className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                style={{
+                  background: 'hsl(14 82% 53% / 0.18)',
+                  border: '1px solid hsl(14 82% 53% / 0.25)',
+                }}
+              >
+                <Icon className="h-7 w-7 text-primary" />
+              </div>
+              <div
+                className="w-6 h-6 rounded-full flex items-center justify-center mx-auto mb-3 text-xs font-bold"
+                style={{ background: 'hsl(14 82% 53% / 0.2)', color: 'hsl(14 82% 65%)' }}
+              >
+                {i + 1}
+              </div>
+              <h3 className="font-display text-xl font-bold text-secondary-foreground mb-2">
+                {title}
+              </h3>
+              <p className="text-secondary-foreground/60 text-sm leading-relaxed">{description}</p>
             </div>
-            <h3 className="font-display text-lg font-semibold text-secondary-foreground mb-2">
-              Elige tu cafe
-            </h3>
-            <p className="text-secondary-foreground/70 text-sm">
-              Selecciona tu cafe favorito, presentacion y tipo de molido
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <CreditCard className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="font-display text-lg font-semibold text-secondary-foreground mb-2">
-              Cobro automatico
-            </h3>
-            <p className="text-secondary-foreground/70 text-sm">
-              Tu tarjeta se cobra automaticamente segun tu plan
-            </p>
-          </div>
-          <div className="text-center">
-            <div className="w-16 h-16 bg-primary/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Truck className="h-8 w-8 text-primary" />
-            </div>
-            <h3 className="font-display text-lg font-semibold text-secondary-foreground mb-2">
-              Recibe en casa
-            </h3>
-            <p className="text-secondary-foreground/70 text-sm">
-              Envio gratis a la puerta de tu casa
-            </p>
-          </div>
+          ))}
         </div>
 
         {/* Plans */}
         {plans.length === 0 ? (
-          <p className="text-center text-secondary-foreground/60">
+          <p className="text-center text-secondary-foreground/50 text-lg">
             Proximamente planes de suscripcion disponibles.
           </p>
         ) : (
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-6 items-start">
             {plans.map((plan: any, index: number) => (
               <div
                 key={plan.id}
-                className={`relative rounded-2xl p-8 transition-all duration-300 hover:-translate-y-2 animate-fade-in ${
-                  plan.isPopular
-                    ? 'bg-primary text-primary-foreground shadow-warm scale-105'
-                    : 'bg-card text-card-foreground shadow-elevated'
+                className={`relative rounded-3xl p-8 transition-all duration-300 animate-fade-in ${
+                  plan.isPopular ? 'md:-mt-4' : ''
                 }`}
-                style={{ animationDelay: `${index * 0.1}s` }}
+                style={{
+                  animationDelay: `${index * 0.1}s`,
+                  ...(plan.isPopular
+                    ? {
+                        background: 'linear-gradient(145deg, hsl(14 82% 50%), hsl(20 75% 42%))',
+                        boxShadow: '0 24px 64px hsl(14 82% 53% / 0.45), 0 0 0 1px hsl(14 82% 70% / 0.2)',
+                      }
+                    : {
+                        background: 'hsl(0 0% 100% / 0.07)',
+                        border: '1px solid hsl(0 0% 100% / 0.12)',
+                        backdropFilter: 'blur(16px)',
+                        boxShadow: '0 8px 32px hsl(0 0% 0% / 0.2)',
+                      }),
+                }}
               >
                 {plan.isPopular && (
-                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-accent-foreground text-xs font-bold px-4 py-1 rounded-full">
-                    Mas popular
-                  </span>
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                    <span
+                      className="inline-flex items-center gap-1.5 text-xs font-bold px-4 py-1.5 rounded-full"
+                      style={{
+                        background: 'var(--gradient-gold)',
+                        color: 'white',
+                        boxShadow: '0 4px 12px hsl(38 75% 48% / 0.5)',
+                      }}
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Mas popular
+                    </span>
+                  </div>
                 )}
 
                 <div className="text-center mb-6">
-                  <h3 className="font-display text-2xl font-bold mb-1">{plan.name}</h3>
+                  <h3
+                    className="font-display font-bold mb-1"
+                    style={{
+                      fontSize: '1.8rem',
+                      color: plan.isPopular ? 'white' : 'hsl(var(--secondary-foreground))',
+                    }}
+                  >
+                    {plan.name}
+                  </h3>
                   <p
-                    className={`text-sm ${plan.isPopular ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}
+                    className="text-sm font-medium"
+                    style={{
+                      color: plan.isPopular
+                        ? 'hsl(0 0% 100% / 0.75)'
+                        : 'hsl(var(--secondary-foreground) / 0.55)',
+                    }}
                   >
                     {plan.frequencyLabel}
                   </p>
                 </div>
 
-                <div className="text-center mb-6">
+                <div className="text-center mb-7">
                   {plan.originalPrice && (
-                    <div className="flex items-center justify-center gap-2 mb-1">
+                    <div className="flex items-center justify-center gap-2 mb-1.5">
                       <span
-                        className={`text-sm line-through ${plan.isPopular ? 'text-primary-foreground/60' : 'text-muted-foreground'}`}
+                        className="text-sm line-through"
+                        style={{
+                          color: plan.isPopular
+                            ? 'hsl(0 0% 100% / 0.5)'
+                            : 'hsl(var(--secondary-foreground) / 0.4)',
+                        }}
                       >
                         ${plan.originalPrice.toLocaleString('es-CO')}
                       </span>
                       {plan.discount && (
                         <span
-                          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                            plan.isPopular ? 'bg-primary-foreground/20' : 'bg-primary/10 text-primary'
-                          }`}
+                          className="text-xs font-bold px-2.5 py-0.5 rounded-full"
+                          style={
+                            plan.isPopular
+                              ? { background: 'hsl(0 0% 100% / 0.2)', color: 'white' }
+                              : { background: 'hsl(var(--primary) / 0.15)', color: 'hsl(var(--primary))' }
+                          }
                         >
                           -{plan.discount}
                         </span>
                       )}
                     </div>
                   )}
-                  <div className="flex items-baseline justify-center">
-                    <span className="text-4xl font-display font-bold">
+                  <div className="flex items-baseline justify-center gap-1">
+                    <span
+                      className="font-display font-bold"
+                      style={{
+                        fontSize: '2.5rem',
+                        color: plan.isPopular ? 'white' : 'hsl(var(--secondary-foreground))',
+                      }}
+                    >
                       ${plan.price.toLocaleString('es-CO')}
                     </span>
                     <span
-                      className={`text-sm ml-1 ${plan.isPopular ? 'text-primary-foreground/80' : 'text-muted-foreground'}`}
+                      className="text-sm"
+                      style={{
+                        color: plan.isPopular
+                          ? 'hsl(0 0% 100% / 0.65)'
+                          : 'hsl(var(--secondary-foreground) / 0.5)',
+                      }}
                     >
                       /envio
                     </span>
@@ -129,11 +224,23 @@ export default function SubscriptionSection({ plans }: SubscriptionSectionProps)
 
                 <ul className="space-y-3 mb-8">
                   {(plan.features || []).map((feature: string, i: number) => (
-                    <li key={i} className="flex items-center gap-3 text-sm">
-                      <Check
-                        className={`h-5 w-5 flex-shrink-0 ${plan.isPopular ? 'text-primary-foreground' : 'text-primary'}`}
-                      />
-                      <span>{feature}</span>
+                    <li key={i} className="flex items-start gap-3 text-sm">
+                      <div
+                        className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                        style={
+                          plan.isPopular
+                            ? { background: 'hsl(0 0% 100% / 0.2)' }
+                            : { background: 'hsl(var(--primary) / 0.15)' }
+                        }
+                      >
+                        <Check
+                          className="h-3 w-3 flex-shrink-0"
+                          style={{ color: plan.isPopular ? 'white' : 'hsl(var(--primary))' }}
+                        />
+                      </div>
+                      <span style={{ color: plan.isPopular ? 'hsl(0 0% 100% / 0.88)' : 'hsl(var(--secondary-foreground) / 0.8)' }}>
+                        {feature}
+                      </span>
                     </li>
                   ))}
                 </ul>
@@ -142,9 +249,23 @@ export default function SubscriptionSection({ plans }: SubscriptionSectionProps)
                   href={`/suscribirse?plan=${plan.id}`}
                   className={`w-full py-3 rounded-full font-semibold transition-all duration-300 text-center block ${
                     plan.isPopular
-                      ? 'bg-primary-foreground text-primary hover:bg-primary-foreground/90'
-                      : 'bg-primary text-primary-foreground hover:shadow-warm'
+                      ? 'hover:opacity-95 hover:scale-[1.02] active:scale-95'
+                      : 'hover:scale-[1.02] active:scale-95'
                   }`}
+                  style={
+                    plan.isPopular
+                      ? {
+                          background: 'hsl(0 0% 100%)',
+                          color: 'hsl(14 82% 50%)',
+                          fontWeight: 700,
+                          boxShadow: '0 4px 16px hsl(0 0% 0% / 0.15)',
+                        }
+                      : {
+                          background: 'var(--gradient-warm)',
+                          color: 'white',
+                          boxShadow: 'var(--shadow-warm)',
+                        }
+                  }
                 >
                   Suscribirse
                 </Link>

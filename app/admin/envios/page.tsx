@@ -88,7 +88,7 @@ export default function AdminShippingPage() {
 
   return (
     <div className="space-y-8">
-      <h2 className="font-display text-2xl font-bold text-foreground">Gestion de Envios</h2>
+      
 
       <section>
         <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">

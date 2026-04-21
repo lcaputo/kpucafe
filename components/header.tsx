@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -13,6 +13,13 @@ export default function Header() {
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -21,21 +28,30 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-secondary/95 backdrop-blur-md border-b border-secondary-foreground/10">
-      <div className="container mx-auto px-4 py-4">
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        scrolled
+          ? 'bg-secondary/90 backdrop-blur-xl border-b border-secondary-foreground/10 shadow-[0_2px_24px_hsl(15_45%_10%/0.4)]'
+          : 'bg-secondary/75 backdrop-blur-lg border-b border-secondary-foreground/8'
+      }`}
+    >
+      <div className="container mx-auto px-4 py-3.5">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/lovable-uploads/b5ca903b-190c-42d1-bc05-a7b7aa79b434.png"
-              alt="KPU Cafe Colombiano"
-              width={48}
-              height={48}
-              className="rounded-full object-cover"
-            />
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-primary/30 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <Image
+                src="/lovable-uploads/b5ca903b-190c-42d1-bc05-a7b7aa79b434.png"
+                alt="KPU Cafe Colombiano"
+                width={44}
+                height={44}
+                className="relative rounded-full object-cover ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all duration-300"
+              />
+            </div>
             <div className="hidden sm:block">
-              <span className="text-secondary-foreground font-display text-xl font-bold">KPU</span>
-              <span className="text-primary font-display text-sm block -mt-1">
+              <span className="text-secondary-foreground font-display text-2xl tracking-wide leading-none">KPU</span>
+              <span className="text-primary font-sans text-xs font-semibold block tracking-widest uppercase opacity-80">
                 Cafe Colombiano
               </span>
             </div>
@@ -43,83 +59,71 @@ export default function Header() {
 
           {/* Desktop Navigation */}
           <nav aria-label="Navegacion principal" className="hidden md:flex items-center gap-8">
-            <a
-              href="/#productos"
-              className="text-secondary-foreground/80 hover:text-primary transition-colors font-medium"
-            >
-              Productos
-            </a>
-            <a
-              href="/#suscripciones"
-              className="text-secondary-foreground/80 hover:text-primary transition-colors font-medium"
-            >
-              Suscripciones
-            </a>
-            <a
-              href="/#nosotros"
-              className="text-secondary-foreground/80 hover:text-primary transition-colors font-medium"
-            >
-              Nosotros
-            </a>
-            <a
-              href="/#contacto"
-              className="text-secondary-foreground/80 hover:text-primary transition-colors font-medium"
-            >
-              Contacto
-            </a>
+            {['/#productos', '/#suscripciones', '/#nosotros', '/#contacto'].map((href, i) => {
+              const labels = ['Productos', 'Suscripciones', 'Nosotros', 'Contacto'];
+              return (
+                <a
+                  key={href}
+                  href={href}
+                  className="relative text-secondary-foreground/75 hover:text-secondary-foreground transition-colors duration-200 font-medium text-sm group"
+                >
+                  {labels[i]}
+                  <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-primary group-hover:w-full transition-all duration-300" />
+                </a>
+              );
+            })}
           </nav>
 
           {/* Actions */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {user ? (
               <div className="relative">
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                  className="hidden md:flex items-center gap-2 text-secondary-foreground/80 hover:text-primary transition-colors"
+                  aria-label="Menu de usuario"
+                  aria-expanded={isUserMenuOpen}
+                  className="hidden md:flex items-center gap-2.5 text-secondary-foreground/75 hover:text-secondary-foreground transition-colors cursor-pointer"
                 >
-                  <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center">
+                  <div className="w-8 h-8 bg-primary/20 rounded-full flex items-center justify-center ring-1 ring-primary/30">
                     <User className="h-4 w-4 text-primary" />
                   </div>
-                  <span className="font-medium">Mi cuenta</span>
+                  <span className="font-medium text-sm">Mi cuenta</span>
                 </button>
 
                 {isUserMenuOpen && (
                   <>
-                    <div
-                      className="fixed inset-0 z-40"
-                      onClick={() => setIsUserMenuOpen(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-card rounded-xl shadow-elevated border border-border py-2 z-50">
+                    <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
+                    <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-border/60 py-2 z-50 shadow-elevated overflow-hidden glass">
                       <Link
                         href="/mis-pedidos"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-card-foreground hover:bg-muted transition-colors"
+                        className="flex items-center gap-3 px-4 py-2.5 text-foreground hover:bg-muted/70 transition-colors text-sm"
                       >
-                        <Package className="h-4 w-4" />
+                        <Package className="h-4 w-4 text-muted-foreground" />
                         Mis Pedidos
                       </Link>
                       <Link
                         href="/mis-suscripciones"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-card-foreground hover:bg-muted transition-colors"
+                        className="flex items-center gap-3 px-4 py-2.5 text-foreground hover:bg-muted/70 transition-colors text-sm"
                       >
-                        <RefreshCw className="h-4 w-4" />
+                        <RefreshCw className="h-4 w-4 text-muted-foreground" />
                         Mis Suscripciones
                       </Link>
                       {isAdmin && (
                         <Link
                           href="/admin"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-primary hover:bg-muted transition-colors"
+                          className="flex items-center gap-3 px-4 py-2.5 text-primary hover:bg-muted/70 transition-colors text-sm font-medium"
                         >
                           <Settings className="h-4 w-4" />
                           Panel Admin
                         </Link>
                       )}
-                      <hr className="my-2 border-border" />
+                      <hr className="my-1.5 border-border/60" />
                       <button
                         onClick={handleSignOut}
-                        className="flex items-center gap-3 px-4 py-2.5 text-destructive hover:bg-muted transition-colors w-full"
+                        className="flex items-center gap-3 px-4 py-2.5 text-destructive hover:bg-muted/70 transition-colors w-full text-sm cursor-pointer"
                       >
                         <LogOut className="h-4 w-4" />
                         Cerrar Sesion
@@ -131,103 +135,80 @@ export default function Header() {
             ) : (
               <Link
                 href="/auth"
-                className="hidden md:flex items-center gap-2 text-secondary-foreground/80 hover:text-primary transition-colors"
+                className="hidden md:flex items-center gap-2 text-secondary-foreground/75 hover:text-secondary-foreground transition-colors text-sm font-medium"
               >
-                <User className="h-5 w-5" />
-                <span className="font-medium">Ingresar</span>
+                <User className="h-4 w-4" />
+                Ingresar
               </Link>
             )}
 
             <button
               onClick={() => setIsCartOpen(true)}
-              className="relative p-2 text-secondary-foreground/80 hover:text-primary transition-colors"
+              aria-label={`Carrito de compras, ${totalItems} artículos`}
+              className="relative p-2.5 text-secondary-foreground/75 hover:text-secondary-foreground transition-colors rounded-xl hover:bg-secondary-foreground/10 cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
             >
-              <ShoppingBag className="h-6 w-6" />
+              <ShoppingBag className="h-5 w-5" />
               {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-bold h-5 w-5 rounded-full flex items-center justify-center">
-                  {totalItems}
+                <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[11px] font-bold h-5 w-5 rounded-full flex items-center justify-center leading-none">
+                  {totalItems > 9 ? '9+' : totalItems}
                 </span>
               )}
             </button>
 
             <button
-              className="md:hidden p-2 text-secondary-foreground/80"
+              className="md:hidden p-2.5 text-secondary-foreground/75 hover:text-secondary-foreground rounded-xl hover:bg-secondary-foreground/10 transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              aria-label={isMobileMenuOpen ? 'Cerrar menu' : 'Abrir menu'}
+              aria-expanded={isMobileMenuOpen}
             >
-              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
 
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <nav aria-label="Menu movil" className="md:hidden pt-4 pb-2 border-t border-secondary-foreground/10 mt-4">
-            <div className="flex flex-col gap-3">
-              <a
-                href="/#productos"
-                className="text-secondary-foreground/80 hover:text-primary transition-colors font-medium py-2"
-              >
-                Productos
-              </a>
-              <a
-                href="/#suscripciones"
-                className="text-secondary-foreground/80 hover:text-primary transition-colors font-medium py-2"
-              >
-                Suscripciones
-              </a>
-              <a
-                href="/#nosotros"
-                className="text-secondary-foreground/80 hover:text-primary transition-colors font-medium py-2"
-              >
-                Nosotros
-              </a>
-              <a
-                href="/#contacto"
-                className="text-secondary-foreground/80 hover:text-primary transition-colors font-medium py-2"
-              >
-                Contacto
-              </a>
-              <hr className="border-secondary-foreground/10" />
+          <nav
+            aria-label="Menu movil"
+            className="md:hidden pt-4 pb-3 border-t border-secondary-foreground/10 mt-3 animate-fade-in"
+          >
+            <div className="flex flex-col gap-1">
+              {[['/#productos', 'Productos'], ['/#suscripciones', 'Suscripciones'], ['/#nosotros', 'Nosotros'], ['/#contacto', 'Contacto']].map(([href, label]) => (
+                <a
+                  key={href}
+                  href={href}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="text-secondary-foreground/75 hover:text-secondary-foreground hover:bg-secondary-foreground/8 transition-colors font-medium py-2.5 px-3 rounded-xl text-sm"
+                >
+                  {label}
+                </a>
+              ))}
+              <hr className="border-secondary-foreground/10 my-1" />
               {user ? (
                 <>
-                  <Link
-                    href="/mis-pedidos"
-                    className="flex items-center gap-2 text-secondary-foreground/80 hover:text-primary transition-colors py-2"
-                  >
-                    <Package className="h-5 w-5" />
-                    <span className="font-medium">Mis Pedidos</span>
+                  <Link href="/mis-pedidos" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 text-secondary-foreground/75 hover:text-secondary-foreground hover:bg-secondary-foreground/8 transition-colors py-2.5 px-3 rounded-xl text-sm">
+                    <Package className="h-4 w-4" />
+                    Mis Pedidos
                   </Link>
-                  <Link
-                    href="/mis-suscripciones"
-                    className="flex items-center gap-2 text-secondary-foreground/80 hover:text-primary transition-colors py-2"
-                  >
-                    <RefreshCw className="h-5 w-5" />
-                    <span className="font-medium">Mis Suscripciones</span>
+                  <Link href="/mis-suscripciones" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 text-secondary-foreground/75 hover:text-secondary-foreground hover:bg-secondary-foreground/8 transition-colors py-2.5 px-3 rounded-xl text-sm">
+                    <RefreshCw className="h-4 w-4" />
+                    Mis Suscripciones
                   </Link>
                   {isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="flex items-center gap-2 text-primary py-2"
-                    >
-                      <Settings className="h-5 w-5" />
-                      <span className="font-medium">Panel Admin</span>
+                    <Link href="/admin" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 text-primary hover:bg-secondary-foreground/8 transition-colors py-2.5 px-3 rounded-xl text-sm font-medium">
+                      <Settings className="h-4 w-4" />
+                      Panel Admin
                     </Link>
                   )}
-                  <button
-                    onClick={handleSignOut}
-                    className="flex items-center gap-2 text-destructive py-2"
-                  >
-                    <LogOut className="h-5 w-5" />
-                    <span className="font-medium">Cerrar Sesion</span>
+                  <button onClick={handleSignOut} className="flex items-center gap-2.5 text-destructive hover:bg-secondary-foreground/8 transition-colors py-2.5 px-3 rounded-xl text-sm w-full cursor-pointer">
+                    <LogOut className="h-4 w-4" />
+                    Cerrar Sesion
                   </button>
                 </>
               ) : (
-                <Link
-                  href="/auth"
-                  className="flex items-center gap-2 text-secondary-foreground/80 hover:text-primary transition-colors py-2"
-                >
-                  <User className="h-5 w-5" />
-                  <span className="font-medium">Ingresar</span>
+                <Link href="/auth" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-2.5 text-secondary-foreground/75 hover:text-secondary-foreground hover:bg-secondary-foreground/8 transition-colors py-2.5 px-3 rounded-xl text-sm">
+                  <User className="h-4 w-4" />
+                  Ingresar
                 </Link>
               )}
             </div>

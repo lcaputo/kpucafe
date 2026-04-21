@@ -149,7 +149,7 @@ export default function AdminCouponsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h2 className="font-display text-2xl font-bold text-foreground">Cupones</h2>
+        
         <button onClick={() => openModal()} className="btn-kpu flex items-center gap-2">
           <Plus className="h-5 w-5" />Nuevo Cupon
         </button>

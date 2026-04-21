@@ -86,41 +86,44 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-dvh flex overflow-hidden">
       {/* Left side - Form */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12 bg-background">
-        <div className="w-full max-w-md">
+      <div className="flex-1 flex flex-col justify-center items-center px-6 bg-background">
+        <div className="w-full max-w-sm">
           {/* Back to store link */}
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors text-sm"
+            className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-5 transition-colors text-sm"
           >
             <ArrowLeft className="h-4 w-4" />
             Volver a la tienda
           </Link>
 
-          <div className="text-center mb-8">
-            <Image
-              src="/assets/logo-kpu.png"
-              alt="KPU Cafe"
-              width={80}
-              height={80}
-              className="rounded-full mx-auto mb-4 object-cover"
-            />
-            <h1 className="font-display text-3xl font-bold text-foreground">
+          <div className="text-center mb-5">
+            <div className="flex justify-center mb-3">
+              <Image
+                src="/lovable-uploads/b5ca903b-190c-42d1-bc05-a7b7aa79b434.png"
+                alt="KPU Cafe Colombiano"
+                width={140}
+                height={46}
+                className="object-contain"
+                priority
+              />
+            </div>
+            <h1 className="font-display text-2xl font-bold text-foreground">
               {isLogin ? 'Iniciar Sesion' : 'Crear Cuenta'}
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-1 text-sm">
               {isLogin
                 ? 'Ingresa a tu cuenta KPU Cafe'
                 : 'Unete a la familia KPU Cafe'}
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {!isLogin && (
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
+                <label className="block text-sm font-medium text-foreground mb-1">
                   Nombre completo
                 </label>
                 <input
@@ -129,13 +132,14 @@ export default function Auth() {
                   onChange={(e) => setFullName(e.target.value)}
                   required={!isLogin}
                   placeholder="Juan Perez"
-                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                  autoComplete="name"
+                  className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Email
               </label>
               <input
@@ -144,12 +148,13 @@ export default function Auth() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 placeholder="tu@email.com"
-                className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
+                autoComplete="email"
+                className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground mb-2">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Contrasena
               </label>
               <div className="relative">
@@ -160,12 +165,14 @@ export default function Auth() {
                   required
                   minLength={6}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all pr-12"
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
+                  className="w-full px-4 py-2.5 rounded-xl border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary transition-all pr-12"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground min-w-[44px] min-h-[44px] flex items-center justify-center"
+                  aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
@@ -175,7 +182,7 @@ export default function Auth() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full btn-kpu flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full btn-kpu flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed mt-1"
             >
               {isSubmitting ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -186,10 +193,10 @@ export default function Auth() {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-4 text-center">
             <button
               onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:underline font-medium"
+              className="text-primary hover:underline font-medium text-sm"
             >
               {isLogin
                 ? 'No tienes cuenta? Registrate'

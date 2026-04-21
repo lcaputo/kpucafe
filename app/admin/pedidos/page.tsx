@@ -191,7 +191,7 @@ export default function AdminOrdersPage() {
   return (
     <div>
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground">Pedidos</h2>
+        
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />

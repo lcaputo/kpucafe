@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { ShoppingBag, Check } from 'lucide-react';
+import { ShoppingBag, Check, Star } from 'lucide-react';
 import { useCart } from '@/components/providers';
 
 interface Product {
@@ -24,6 +24,8 @@ interface ProductCardProps {
   product: Product;
 }
 
+const ROAST_LABELS = ['', 'Suave', 'Suave-Medio', 'Medio', 'Medio-Fuerte', 'Fuerte'];
+
 export default function ProductCard({ product }: ProductCardProps) {
   const { addItem, setIsCartOpen } = useCart();
   const hasVariants = product.hasVariants !== false;
@@ -33,9 +35,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   const findInitialSelection = () => {
     for (const grind of product.grinds) {
       for (const weight of product.weights) {
-        if (getStock(weight.value, grind) > 0) {
-          return { grind, weight };
-        }
+        if (getStock(weight.value, grind) > 0) return { grind, weight };
       }
     }
     return { grind: product.grinds[0], weight: product.weights[0] };
@@ -82,23 +82,34 @@ export default function ProductCard({ product }: ProductCardProps) {
     setTimeout(() => {
       setIsAdded(false);
       setIsCartOpen(true);
-    }, 500);
+    }, 600);
   };
 
   return (
-    <div className="card-product group">
+    <article className="card-product group flex flex-col h-full">
       {/* Image */}
-      <div className="relative overflow-hidden aspect-square bg-muted">
+      <div className="relative overflow-hidden aspect-[4/3] bg-muted flex-shrink-0">
         <Image
           src={product.image}
           alt={product.name}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-110"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
+
+        {/* Gradient overlay on hover */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
         {product.origin && (
-          <div className="absolute top-4 right-4">
-            <span className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">
+          <div className="absolute top-3 left-3">
+            <span
+              className="text-xs font-semibold px-3 py-1.5 rounded-full"
+              style={{
+                background: 'hsl(var(--primary) / 0.9)',
+                color: 'hsl(var(--primary-foreground))',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
               {product.origin}
             </span>
           </div>
@@ -106,49 +117,55 @@ export default function ProductCard({ product }: ProductCardProps) {
       </div>
 
       {/* Content */}
-      <div className="p-6">
-        <h3 className="font-display text-xl font-bold text-foreground mb-2">{product.name}</h3>
-        <p className="text-muted-foreground text-sm mb-4">{product.description}</p>
+      <div className="p-5 flex flex-col flex-1">
+        <h3 className="font-display text-2xl font-bold text-foreground mb-1.5 leading-tight">
+          {product.name}
+        </h3>
+        <p className="text-muted-foreground text-sm leading-relaxed mb-4 line-clamp-2">
+          {product.description}
+        </p>
 
-        {/* Roast Level -- only for coffee with variants */}
+        {/* Roast level */}
         {hasVariants && (
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs text-muted-foreground">Tostado:</span>
-            <div className="flex gap-1">
+          <div className="flex items-center gap-2.5 mb-4">
+            <span className="text-xs text-muted-foreground font-medium">Tostado:</span>
+            <div className="flex gap-1" aria-label={`Nivel de tostado: ${ROAST_LABELS[product.roastLevel]}`}>
               {[1, 2, 3, 4, 5].map((level) => (
                 <div
                   key={level}
-                  className={`w-3 h-3 rounded-full ${
-                    level <= product.roastLevel ? 'bg-primary' : 'bg-muted-foreground/30'
+                  className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                    level <= product.roastLevel
+                      ? 'bg-primary'
+                      : 'bg-muted-foreground/25'
                   }`}
                 />
               ))}
             </div>
-            <span className="text-xs text-muted-foreground">
-              {product.roastLevel <= 2 ? 'Suave' : product.roastLevel <= 4 ? 'Medio' : 'Fuerte'}
-            </span>
+            <span className="text-xs text-muted-foreground">{ROAST_LABELS[product.roastLevel]}</span>
           </div>
         )}
 
         {hasVariants && (
-          <>
-            {/* Grind Selection */}
-            <div className="mb-4">
-              <span className="text-xs text-muted-foreground block mb-2">Tipo:</span>
-              <div className="flex gap-2">
+          <div className="space-y-3 mb-5">
+            {/* Grind */}
+            <div>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">
+                Tipo
+              </span>
+              <div className="flex flex-wrap gap-1.5">
                 {product.grinds.map((grind) => {
-                  const allWeightsOut = product.weights.every((w) => getStock(w.value, grind) <= 0);
+                  const allOut = product.weights.every((w) => getStock(w.value, grind) <= 0);
                   return (
                     <button
                       key={grind}
                       onClick={() => handleGrindChange(grind)}
-                      disabled={allWeightsOut}
-                      className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
-                        allWeightsOut
-                          ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
+                      disabled={allOut}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all duration-200 cursor-pointer min-h-[36px] ${
+                        allOut
+                          ? 'border-border/50 text-muted-foreground/40 line-through cursor-not-allowed'
                           : selectedGrind === grind
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'border-border text-foreground hover:border-primary'
+                          ? 'border-primary bg-primary text-primary-foreground shadow-warm'
+                          : 'border-border text-foreground hover:border-primary/60 hover:bg-primary/5'
                       }`}
                     >
                       {grind}
@@ -158,10 +175,12 @@ export default function ProductCard({ product }: ProductCardProps) {
               </div>
             </div>
 
-            {/* Weight Selection */}
-            <div className="mb-6">
-              <span className="text-xs text-muted-foreground block mb-2">Presentacion:</span>
-              <div className="flex gap-2">
+            {/* Weight */}
+            <div>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1.5">
+                Presentacion
+              </span>
+              <div className="flex flex-wrap gap-1.5">
                 {product.weights.map((weight) => {
                   const weightOut = getStock(weight.value, selectedGrind) <= 0;
                   return (
@@ -169,12 +188,12 @@ export default function ProductCard({ product }: ProductCardProps) {
                       key={weight.value}
                       onClick={() => handleWeightChange(weight)}
                       disabled={weightOut}
-                      className={`px-3 py-1.5 text-sm rounded-lg border transition-all ${
+                      className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all duration-200 cursor-pointer min-h-[36px] ${
                         weightOut
-                          ? 'border-border text-muted-foreground/40 line-through cursor-not-allowed'
+                          ? 'border-border/50 text-muted-foreground/40 line-through cursor-not-allowed'
                           : selectedWeight.value === weight.value
-                            ? 'border-primary bg-primary text-primary-foreground'
-                            : 'border-border text-foreground hover:border-primary'
+                          ? 'border-primary bg-primary text-primary-foreground shadow-warm'
+                          : 'border-border text-foreground hover:border-primary/60 hover:bg-primary/5'
                       }`}
                     >
                       {weight.value}
@@ -183,48 +202,50 @@ export default function ProductCard({ product }: ProductCardProps) {
                 })}
               </div>
             </div>
-          </>
+          </div>
         )}
 
-        {/* Spacer when no variants to keep layout consistent */}
-        {!hasVariants && <div className="mb-6" />}
+        {!hasVariants && <div className="mb-5 flex-1" />}
 
         {/* Price & Add to Cart */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/60">
           <div>
-            <span className="text-2xl font-display font-bold text-foreground">
-              ${currentPrice.toLocaleString('es-CO')}
-            </span>
-            <span className="text-muted-foreground text-sm ml-1">COP</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-display font-bold text-foreground">
+                ${currentPrice.toLocaleString('es-CO')}
+              </span>
+              <span className="text-muted-foreground text-xs font-medium">COP</span>
+            </div>
           </div>
 
           <button
             onClick={handleAddToCart}
             disabled={isAdded || isOutOfStock}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold transition-all duration-300 ${
+            aria-label={isOutOfStock ? 'Producto agotado' : `Agregar ${product.name} al carrito`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 cursor-pointer min-h-[44px] ${
               isOutOfStock
                 ? 'bg-muted text-muted-foreground cursor-not-allowed'
                 : isAdded
-                  ? 'bg-green-500 text-white'
-                  : 'bg-primary text-primary-foreground hover:shadow-warm hover:scale-105'
+                ? 'bg-green-500 text-white scale-95'
+                : 'bg-primary text-primary-foreground hover:shadow-warm hover:scale-[1.04] active:scale-95'
             }`}
           >
             {isOutOfStock ? (
               'Agotado'
             ) : isAdded ? (
               <>
-                <Check className="h-5 w-5" />
+                <Check className="h-4 w-4" />
                 Agregado
               </>
             ) : (
               <>
-                <ShoppingBag className="h-5 w-5" />
+                <ShoppingBag className="h-4 w-4" />
                 Agregar
               </>
             )}
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

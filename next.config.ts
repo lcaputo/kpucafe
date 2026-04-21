@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'storage.googleapis.com' },
       { protocol: 'http', hostname: 'localhost' },
     ],
+    localPatterns: [
+      { pathname: '/uploads/**' },
+      { pathname: '/assets/**' },
+      { pathname: '/lovable-uploads/**' },
+    ],
   },
 };
 

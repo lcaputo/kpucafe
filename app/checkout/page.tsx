@@ -1119,7 +1119,7 @@ export default function Checkout() {
                         )}
                       </span>
                     </div>
-                    <div className="flex justify-between pt-2 border-t border-border font-semibold">
+                    <div className="flex justify-between pt-2 border-t border-border">
                       <span>Total</span>
                       <span className="font-display text-lg text-primary">${finalTotal.toLocaleString('es-CO')}</span>
                     </div>

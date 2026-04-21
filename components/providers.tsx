@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { Toaster } from '@/components/ui/toaster';
 
 // ─── Auth types ──────────────────────────────────────────────────────────────
 
@@ -216,7 +217,10 @@ export function useCart() {
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider>
-      <CartProvider>{children}</CartProvider>
+      <CartProvider>
+        {children}
+        <Toaster />
+      </CartProvider>
     </AuthProvider>
   );
 }

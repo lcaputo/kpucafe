@@ -285,13 +285,9 @@ export default function AdminProductsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="font-display text-2xl font-bold text-foreground">Productos</h2>
-        <button onClick={() => openModal()} className="btn-kpu flex items-center gap-2"><Plus className="h-5 w-5" />Nuevo Producto</button>
-      </div>
-
-      {/* Category filter tabs */}
-      <div className="flex gap-2 flex-wrap mb-5">
+      {/* Category filter tabs + action */}
+      <div className="flex items-center gap-2 flex-wrap mb-5">
+        <div className="flex gap-2 flex-wrap flex-1">
         <button
           onClick={() => setFilterCategoryId('all')}
           className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${filterCategoryId === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary'}`}
@@ -316,14 +312,15 @@ export default function AdminProductsPage() {
         >
           Sin categoria ({products.filter(p => !p.category_id).length})
         </button>
+        </div>
+        <button onClick={() => openModal()} className="btn-kpu flex items-center gap-2 flex-shrink-0"><Plus className="h-4 w-4" />Nuevo Producto</button>
       </div>
 
       {filteredProducts.length === 0 ? (
-        <div className="text-center py-16 bg-card rounded-2xl">
-          <Coffee className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-          <h3 className="font-display text-xl font-semibold text-foreground mb-2">No hay productos</h3>
-          <p className="text-muted-foreground mb-6">Agrega tu primer producto</p>
-          <button onClick={() => openModal()} className="btn-kpu inline-flex items-center gap-2"><Plus className="h-5 w-5" />Agregar Producto</button>
+        <div className="text-center py-10 bg-card rounded-2xl">
+          <Coffee className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <h3 className="font-display text-lg font-semibold text-foreground mb-1">No hay productos</h3>
+          <p className="text-muted-foreground text-sm">Agrega tu primer producto</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -407,34 +404,48 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Sidebar Drawer */}
       {isModalOpen && (
         <>
           <div className="fixed inset-0 bg-foreground/50 z-50" onClick={closeModal} />
-          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 max-w-lg mx-auto bg-card rounded-2xl shadow-2xl z-50 max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h3 className="font-display text-xl font-bold text-foreground mb-6">{editingProduct ? 'Editar Producto' : 'Nuevo Producto'}</h3>
-              <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-card z-50 shadow-2xl flex flex-col animate-slide-in-right">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-border flex-shrink-0">
+              <h3 className="font-display text-xl font-bold text-foreground">
+                {editingProduct ? 'Editar Producto' : 'Nuevo Producto'}
+              </h3>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <form id="product-form" onSubmit={handleSubmit} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">Imagen del Producto</label>
                   {imagePreview ? (
-                    <div className="relative w-full h-48 rounded-xl overflow-hidden bg-muted group">
-                      <NextImage src={imagePreview} alt="Vista previa del producto" fill sizes="(max-width: 512px) 100vw, 512px" className="object-cover" />
+                    <div className="relative w-full h-52 rounded-xl overflow-hidden bg-muted group">
+                      <NextImage src={imagePreview} alt="Vista previa del producto" fill sizes="512px" className="object-cover" />
                       <div className="absolute inset-0 bg-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
                         <button type="button" onClick={() => fileInputRef.current?.click()} className="p-2 bg-card rounded-full text-foreground hover:bg-muted transition-colors"><Upload className="h-5 w-5" /></button>
                         <button type="button" onClick={removeImage} className="p-2 bg-card rounded-full text-destructive hover:bg-muted transition-colors"><X className="h-5 w-5" /></button>
                       </div>
                     </div>
                   ) : (
-                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-full h-48 rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-muted/30 flex flex-col items-center justify-center gap-2 transition-colors">
-                      {uploading ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : (<><ImageIcon className="h-8 w-8 text-muted-foreground" /><span className="text-sm text-muted-foreground">Haz clic para subir una imagen</span><span className="text-xs text-muted-foreground">JPG, PNG, WebP - max 5MB</span></>)}
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-full h-52 rounded-xl border-2 border-dashed border-border hover:border-primary/50 bg-muted/30 flex flex-col items-center justify-center gap-2 transition-colors">
+                      {uploading ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : (<><ImageIcon className="h-8 w-8 text-muted-foreground" /><span className="text-sm text-muted-foreground">Haz clic para subir una imagen</span><span className="text-xs text-muted-foreground">JPG, PNG, WebP — max 5MB</span></>)}
                     </button>
                   )}
                   <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-foreground mb-1">Nombre</label>
+                  <label className="block text-sm font-medium text-foreground mb-1">Nombre <span className="text-destructive">*</span></label>
                   <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} required className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                 </div>
 
@@ -445,7 +456,7 @@ export default function AdminProductsPage() {
                     onChange={e => {
                       const catId = e.target.value;
                       const selectedCat = categories.find(c => c.id === catId);
-                      const isCoffee = selectedCat?.name === 'Cafe' || selectedCat?.name === 'Cafe';
+                      const isCoffee = selectedCat?.name === 'Cafe' || selectedCat?.name === 'Café';
                       setFormData({ ...formData, category_id: catId, has_variants: isCoffee });
                     }}
                     className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
@@ -457,24 +468,24 @@ export default function AdminProductsPage() {
                   </select>
                 </div>
 
-                <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                <div className="flex items-center justify-between p-3.5 bg-muted/40 rounded-xl border border-border">
                   <div>
                     <p className="text-sm font-medium text-foreground">Tiene variantes (peso/molienda)</p>
-                    <p className="text-xs text-muted-foreground">Activa para cafe. Desactiva para equipos con precio fijo.</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Activa para cafe. Desactiva para equipos con precio fijo.</p>
                   </div>
                   <Switch checked={formData.has_variants} onCheckedChange={checked => setFormData({ ...formData, has_variants: checked })} />
                 </div>
 
                 {!formData.has_variants && (
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Precio (COP)</label>
+                    <label className="block text-sm font-medium text-foreground mb-1">Precio (COP) <span className="text-destructive">*</span></label>
                     <input type="number" value={formData.base_price} onChange={e => setFormData({ ...formData, base_price: parseInt(e.target.value) || 0 })} required min={0} className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
                   </div>
                 )}
 
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-1">Descripcion</label>
-                  <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={3} className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary" />
+                  <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} rows={3} className="w-full px-4 py-2.5 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary resize-none" />
                 </div>
 
                 <div>
@@ -484,17 +495,32 @@ export default function AdminProductsPage() {
 
                 {formData.has_variants && (
                   <div>
-                    <label className="block text-sm font-medium text-foreground mb-1">Nivel de Tostado (1-5)</label>
-                    <input type="range" min="1" max="5" value={formData.roast_level} onChange={e => setFormData({ ...formData, roast_level: parseInt(e.target.value) })} className="w-full" />
-                    <div className="flex justify-between text-xs text-muted-foreground"><span>Suave</span><span>Medio</span><span>Fuerte</span></div>
+                    <label className="block text-sm font-medium text-foreground mb-2">
+                      Nivel de Tostado — <span className="text-primary font-semibold">{['', 'Suave', 'Medio-Suave', 'Medio', 'Medio-Fuerte', 'Fuerte'][formData.roast_level]}</span>
+                    </label>
+                    <input type="range" min="1" max="5" value={formData.roast_level} onChange={e => setFormData({ ...formData, roast_level: parseInt(e.target.value) })} className="w-full accent-primary" />
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>Suave</span><span>Medio</span><span>Fuerte</span></div>
                   </div>
                 )}
-
-                <div className="flex gap-3 pt-4">
-                  <button type="button" onClick={closeModal} className="flex-1 py-2.5 border border-border rounded-lg text-foreground hover:bg-muted transition-colors">Cancelar</button>
-                  <button type="submit" className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-semibold">{editingProduct ? 'Guardar' : 'Crear'}</button>
-                </div>
               </form>
+            </div>
+
+            {/* Footer actions */}
+            <div className="px-6 py-4 border-t border-border flex-shrink-0 flex gap-3">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="flex-1 py-2.5 border border-border rounded-xl text-foreground hover:bg-muted transition-colors font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                form="product-form"
+                className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-semibold"
+              >
+                {editingProduct ? 'Guardar cambios' : 'Crear producto'}
+              </button>
             </div>
           </div>
         </>

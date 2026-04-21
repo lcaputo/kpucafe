@@ -16,11 +16,13 @@ import {
   RefreshCw,
   Ticket,
   CreditCard,
+  LayoutGrid,
 } from 'lucide-react';
 
 const navItems = [
   { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
   { path: '/admin/productos', icon: Coffee, label: 'Productos' },
+  { path: '/admin/categorias', icon: LayoutGrid, label: 'Categorias' },
   { path: '/admin/pedidos', icon: Package, label: 'Pedidos' },
   { path: '/admin/clientes', icon: Users, label: 'Clientes' },
   { path: '/admin/envios', icon: Truck, label: 'Envios' },

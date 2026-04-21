@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose';
-import * as bcrypt from 'bcrypt';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const bcrypt = require('bcryptjs') as typeof import('bcryptjs');
 import { cookies } from 'next/headers';
 import { prisma } from './prisma';
 
