@@ -1,4 +1,4 @@
-import { prisma } from './prisma';
+import { prisma } from '@/lib/prisma';
 
 export type LogLevel = 'info' | 'warn' | 'error';
 export type LogType = 'auth' | 'order' | 'payment' | 'subscription' | 'admin' | 'system';

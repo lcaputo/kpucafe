@@ -25,7 +25,7 @@ describe('log', () => {
       message: 'Usuario autenticado',
       userId: 'user-uuid-1',
     });
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await Promise.resolve();
     expect(mockCreate).toHaveBeenCalledWith({
       data: {
         level: 'info',
@@ -42,6 +42,6 @@ describe('log', () => {
     expect(() =>
       log({ level: 'error', type: 'system', action: 'unhandled_error', message: 'Fallo crítico' })
     ).not.toThrow();
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await Promise.resolve();
   });
 });
