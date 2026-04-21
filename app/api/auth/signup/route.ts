@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, signAccessToken, signRefreshToken, setAuthCookies } from '@/lib/auth';
+import { log } from '@/lib/logger';
 
 export async function POST(req: Request) {
   try {
@@ -29,6 +30,8 @@ export async function POST(req: Request) {
     const accessToken = await signAccessToken({ sub: user.id, email: user.email });
     const refreshToken = await signRefreshToken({ sub: user.id, email: user.email });
     await setAuthCookies(accessToken, refreshToken);
+
+    log({ level: 'info', type: 'auth', action: 'register', message: 'Nueva cuenta creada', userId: user.id, metadata: { email: user.email } });
 
     return NextResponse.json({
       user: {
