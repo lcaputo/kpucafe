@@ -12,18 +12,32 @@ export async function GET(req: Request) {
     const email = searchParams.get('email') || undefined;
     const from = searchParams.get('from') || undefined;
     const to = searchParams.get('to') || undefined;
-    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
-    const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') || '50')));
+
+    if (email && email.length > 254)
+      return NextResponse.json({ message: 'Email demasiado largo' }, { status: 400 });
+
+    const rawPage = parseInt(searchParams.get('page') || '1', 10);
+    const rawLimit = parseInt(searchParams.get('limit') || '50', 10);
+    const page = isNaN(rawPage) ? 1 : Math.max(1, rawPage);
+    const limit = isNaN(rawLimit) ? 50 : Math.min(200, Math.max(1, rawLimit));
+
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    if (fromDate && isNaN(fromDate.getTime()))
+      return NextResponse.json({ message: 'Fecha "from" inválida' }, { status: 400 });
+    if (toDate && isNaN(toDate.getTime()))
+      return NextResponse.json({ message: 'Fecha "to" inválida' }, { status: 400 });
+
     const skip = (page - 1) * limit;
 
     const where = {
       ...(level && { level }),
       ...(type && { type }),
       ...(email && { user: { email: { contains: email, mode: 'insensitive' as const } } }),
-      ...((from || to) && {
+      ...((fromDate || toDate) && {
         createdAt: {
-          ...(from && { gte: new Date(from) }),
-          ...(to && { lte: new Date(to) }),
+          ...(fromDate && { gte: fromDate }),
+          ...(toDate && { lte: toDate }),
         },
       }),
     };
@@ -61,8 +75,8 @@ export async function GET(req: Request) {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal server error';
-    if (message === 'Unauthorized' || message === 'Forbidden')
-      return NextResponse.json({ message }, { status: 401 });
+    if (message === 'Unauthorized') return NextResponse.json({ message }, { status: 401 });
+    if (message === 'Forbidden') return NextResponse.json({ message }, { status: 403 });
     return NextResponse.json({ message }, { status: 500 });
   }
 }

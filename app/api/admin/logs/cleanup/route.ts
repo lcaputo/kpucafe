@@ -13,11 +13,11 @@ export async function DELETE() {
       where: { createdAt: { lt: cutoff } },
     });
 
-    return NextResponse.json({ deleted: count });
+    return NextResponse.json({ deleted: count, cutoff: cutoff.toISOString() });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Internal server error';
-    if (message === 'Unauthorized' || message === 'Forbidden')
-      return NextResponse.json({ message }, { status: 401 });
+    if (message === 'Unauthorized') return NextResponse.json({ message }, { status: 401 });
+    if (message === 'Forbidden') return NextResponse.json({ message }, { status: 403 });
     return NextResponse.json({ message }, { status: 500 });
   }
 }
