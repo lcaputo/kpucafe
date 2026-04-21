@@ -191,7 +191,7 @@ function OrderCard({ order, expanded, onToggle, items }: { order: Order; expande
               <span className="text-muted-foreground">
                 {new Date(order.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
               </span>
-              <span className="font-display text-foreground">${order.total.toLocaleString('es-CO')}</span>
+              <span className="font-display font-bold text-foreground">${order.total.toLocaleString('es-CO')}</span>
             </div>
             {order.tracking_number && (
               <p className="text-xs text-primary mt-1">
