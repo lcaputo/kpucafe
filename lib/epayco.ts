@@ -9,7 +9,7 @@ export class EpaycoError extends Error {
 }
 
 async function getJwt(): Promise<string> {
-  const res = await fetch(`${EPAYCO_BASE}/v1/auth/login`, {
+  const res = await epaycoFetch(`${EPAYCO_BASE}/v1/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -34,6 +34,14 @@ function authHeaders(jwt: string) {
   };
 }
 
+async function epaycoFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    throw new EpaycoError(`Error de red al contactar ePayco: ${(err as Error).message}`);
+  }
+}
+
 export async function tokenizeCard(card: {
   cardNumber: string;
   expMonth: string;
@@ -42,7 +50,7 @@ export async function tokenizeCard(card: {
   cardHolder: string;
 }): Promise<{ tokenId: string; franchise: string; mask: string }> {
   const jwt = await getJwt();
-  const res = await fetch(`${EPAYCO_BASE}/v1/tokens`, {
+  const res = await epaycoFetch(`${EPAYCO_BASE}/v1/tokens`, {
     method: 'POST',
     headers: authHeaders(jwt),
     body: JSON.stringify({
@@ -86,7 +94,7 @@ export async function createCustomer(params: {
   let phone = (params.phone || '0000000000').replace(/\D/g, '');
   if (phone.startsWith('57') && phone.length > 10) phone = phone.slice(2);
 
-  const res = await fetch(`${EPAYCO_BASE}/payment/v1/customer/create`, {
+  const res = await epaycoFetch(`${EPAYCO_BASE}/payment/v1/customer/create`, {
     method: 'POST',
     headers: authHeaders(jwt),
     body: JSON.stringify({
@@ -132,7 +140,7 @@ export async function chargeCard(params: {
   let phone = (params.buyerPhone || '0000000000').replace(/\D/g, '');
   if (phone.startsWith('57') && phone.length > 10) phone = phone.slice(2);
 
-  const res = await fetch(`${EPAYCO_BASE}/payment/v1/charge/create`, {
+  const res = await epaycoFetch(`${EPAYCO_BASE}/payment/v1/charge/create`, {
     method: 'POST',
     headers: authHeaders(jwt),
     body: JSON.stringify({
