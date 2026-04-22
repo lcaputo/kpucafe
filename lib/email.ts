@@ -228,3 +228,97 @@ export async function sendOrderDeliveredEmail(data: {
     html: wrap(body),
   });
 }
+
+// Email 6: Envia Shipped
+export async function sendEnviaShippedEmail(data: {
+  to: string;
+  orderId: string;
+  customerName: string;
+  carrier: string;
+  trackingNumber: string;
+  trackUrl: string;
+  deliveryEstimate: string;
+}): Promise<void> {
+  const body = `
+    ${orderHeader(data.orderId)}
+    <tr>
+      <td style="padding: 24px; background-color: white;">
+        <p style="margin: 0 0 16px 0; font-size: 16px;">Hola ${data.customerName},</p>
+        <p style="margin: 0 0 24px 0;">Tu pedido ha sido despachado y sera enviado con ${data.carrier}.</p>
+
+        <div style="background-color: #f9f9f9; padding: 16px; border-radius: 8px; margin: 0 0 24px 0;">
+          <p style="margin: 0 0 12px 0; font-weight: bold;">Información del envío</p>
+          <p style="margin: 0 0 8px 0;"><strong>Transportista:</strong> ${data.carrier}</p>
+          <p style="margin: 0 0 8px 0;"><strong>Número de rastreo:</strong> ${data.trackingNumber}</p>
+          <p style="margin: 0;"><strong>Entrega estimada:</strong> ${data.deliveryEstimate}</p>
+        </div>
+
+        <p style="margin: 0 0 24px 0;"><a href="${data.trackUrl}" class="button">Rastrear envío</a></p>
+        <p style="margin: 0;"><a href="https://kpucafe.com/pedido/${data.orderId}" class="button">Ver pedido</a></p>
+      </td>
+    </tr>
+    ${emailFooter()}
+  `;
+
+  await send({
+    from: FROM_EMAIL,
+    to: data.to,
+    subject: `Tu pedido #${formatOrderId(data.orderId)} sera enviado con ${data.carrier}`,
+    html: wrap(body),
+  });
+}
+
+// Email 7: Envia In Transit
+export async function sendEnviaInTransitEmail(data: {
+  to: string;
+  orderId: string;
+  customerName: string;
+  carrier: string;
+  trackUrl: string;
+}): Promise<void> {
+  const body = `
+    ${orderHeader(data.orderId)}
+    <tr>
+      <td style="padding: 24px; background-color: white;">
+        <p style="margin: 0 0 16px 0; font-size: 16px;">Hola ${data.customerName},</p>
+        <p style="margin: 0 0 24px 0;">Tu pedido va en camino con ${data.carrier}.</p>
+        <p style="margin: 0 0 24px 0;"><a href="${data.trackUrl}" class="button">Rastrear envío</a></p>
+        <p style="margin: 0;"><a href="https://kpucafe.com/pedido/${data.orderId}" class="button">Ver pedido</a></p>
+      </td>
+    </tr>
+    ${emailFooter()}
+  `;
+
+  await send({
+    from: FROM_EMAIL,
+    to: data.to,
+    subject: `Tu pedido #${formatOrderId(data.orderId)} va en camino`,
+    html: wrap(body),
+  });
+}
+
+// Email 8: Envia Out For Delivery
+export async function sendEnviaOutForDeliveryEmail(data: {
+  to: string;
+  orderId: string;
+  customerName: string;
+}): Promise<void> {
+  const body = `
+    ${orderHeader(data.orderId)}
+    <tr>
+      <td style="padding: 24px; background-color: white;">
+        <p style="margin: 0 0 16px 0; font-size: 16px;">Hola ${data.customerName},</p>
+        <p style="margin: 0 0 24px 0;">Tu pedido esta en reparto. Sera entregado hoy.</p>
+        <p style="margin: 0;"><a href="https://kpucafe.com/pedido/${data.orderId}" class="button">Ver pedido</a></p>
+      </td>
+    </tr>
+    ${emailFooter()}
+  `;
+
+  await send({
+    from: FROM_EMAIL,
+    to: data.to,
+    subject: `Tu pedido #${formatOrderId(data.orderId)} esta en reparto`,
+    html: wrap(body),
+  });
+}
