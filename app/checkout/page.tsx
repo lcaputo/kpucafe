@@ -140,6 +140,14 @@ export default function Checkout() {
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledSlot, setScheduledSlot] = useState('');
 
+  // Envia delivery state
+  const [enviaAvailable, setEnviaAvailable] = useState(false);
+  const [enviaShippingCost, setEnviaShippingCost] = useState<number | null>(null);
+  const [enviaCarrier, setEnviaCarrier] = useState('');
+  const [enviaService, setEnviaService] = useState('');
+  const [enviaDeliveryEstimate, setEnviaDeliveryEstimate] = useState('');
+  const [enviaQuoteLoading, setEnviaQuoteLoading] = useState(false);
+
   const [form, setForm] = useState<ShippingForm>({
     fullName: '',
     phone: '',
@@ -415,9 +423,12 @@ export default function Checkout() {
       notes: form.notes || null,
       couponId: appliedCoupon?.id || null,
       discountAmount: discountAmount || 0,
-      deliveryMethod: muAvailable ? 'mensajeros_urbanos' : 'standard',
+      deliveryMethod: muAvailable ? 'mensajeros_urbanos' : enviaAvailable ? 'envia' : 'standard',
       shippingCost,
       scheduledDate: scheduledDateISO,
+      enviaCarrier: enviaAvailable ? enviaCarrier : null,
+      enviaService: enviaAvailable ? enviaService : null,
+      enviaDeliveryEstimate: enviaAvailable ? enviaDeliveryEstimate : null,
       items: items.map((item: any) => ({
         productName: item.name,
         quantity: item.quantity,
@@ -554,15 +565,59 @@ export default function Checkout() {
     setMuQuoteLoading(false);
   };
 
+  const fetchEnviaQuote = async (city: string, address: string, department: string, postalCode: string) => {
+    if (city === 'Barranquilla' || !city || !address) {
+      setEnviaAvailable(false);
+      setEnviaShippingCost(null);
+      return;
+    }
+    setEnviaQuoteLoading(true);
+    try {
+      const res = await fetch('/api/delivery/envia-quote', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          city,
+          department,
+          postalCode,
+          address,
+          items: items.map((item: any) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.price,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.available) {
+        setEnviaAvailable(true);
+        setEnviaShippingCost(data.shippingCost);
+        setEnviaCarrier(data.carrier);
+        setEnviaService(data.service);
+        setEnviaDeliveryEstimate(data.deliveryEstimate);
+      } else {
+        setEnviaAvailable(false);
+        setEnviaShippingCost(null);
+      }
+    } catch {
+      setEnviaAvailable(false);
+      setEnviaShippingCost(null);
+    }
+    setEnviaQuoteLoading(false);
+  };
+
   useEffect(() => {
     fetchMuQuote(form.city, form.address);
-  }, [form.city, form.address]);
+    fetchEnviaQuote(form.city, form.address, form.department, form.postalCode);
+  }, [form.city, form.address, form.department, form.postalCode]);
 
   const shippingCost = totalPrice >= 100000
     ? 0
     : muAvailable && muShippingCost !== null
       ? muShippingCost
-      : 12000;
+      : enviaAvailable && enviaShippingCost !== null
+        ? enviaShippingCost
+        : 12000;
   const discountAmount = appliedCoupon
     ? appliedCoupon.discount_type === 'percentage'
       ? Math.round((totalPrice * appliedCoupon.discount_value) / 100)
@@ -963,6 +1018,23 @@ export default function Checkout() {
                     </div>
                   )}
 
+                  {/* Envia Delivery Info */}
+                  {enviaAvailable && !muAvailable && (
+                    <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/10 rounded-xl border border-green-200 dark:border-green-800">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Truck className="h-5 w-5 text-green-600" />
+                        <span className="font-semibold text-foreground">Envio nacional con {enviaCarrier}</span>
+                        {enviaQuoteLoading && <Loader2 className="h-4 w-4 animate-spin text-green-600" />}
+                      </div>
+                      {enviaShippingCost !== null && (
+                        <p className="text-sm text-muted-foreground">
+                          Costo: <span className="font-semibold text-foreground">${enviaShippingCost.toLocaleString('es-CO')}</span>
+                          {enviaDeliveryEstimate && <span className="ml-2">— Entrega estimada: {enviaDeliveryEstimate}</span>}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {!editingAddressId && (
                     <button
                       onClick={() => {
@@ -1097,6 +1169,15 @@ export default function Checkout() {
                             <span className="text-xs text-muted-foreground">
                               - Programado: {new Date(scheduledDate + 'T00:00:00').toLocaleDateString('es-CO', { weekday: 'long', month: 'long', day: 'numeric' })} {scheduledSlot}
                             </span>
+                          )}
+                        </div>
+                      )}
+                      {enviaAvailable && !muAvailable && (
+                        <div className="flex items-center gap-2 py-2">
+                          <Truck className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-700 dark:text-green-400">Envio nacional con {enviaCarrier}</span>
+                          {enviaDeliveryEstimate && (
+                            <span className="text-xs text-muted-foreground">— Entrega: {enviaDeliveryEstimate}</span>
                           )}
                         </div>
                       )}
