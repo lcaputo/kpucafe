@@ -41,6 +41,9 @@ export async function POST(req: Request) {
           deliveryMethod: data.deliveryMethod || 'standard',
           shippingCost: data.shippingCost ?? null,
           scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : null,
+          enviaCarrier: data.enviaCarrier || null,
+          enviaService: data.enviaService || null,
+          enviaDeliveryEstimate: data.enviaDeliveryEstimate || null,
         },
       });
 
