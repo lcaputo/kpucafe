@@ -38,6 +38,9 @@ export async function POST(req: Request) {
           shippingDepartment: data.shippingDepartment,
           shippingPostalCode: data.shippingPostalCode,
           notes: data.notes,
+          deliveryMethod: data.deliveryMethod || 'standard',
+          shippingCost: data.shippingCost ?? null,
+          scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : null,
         },
       });
 
