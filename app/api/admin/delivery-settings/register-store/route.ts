@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     const session = await requireAdmin();
     const { city } = await req.json();
 
-    const settings = await prisma.deliverySettings.findUnique({ where: { city } });
+    const settings = await prisma.deliverySettings.findFirst({ where: { city, provider: 'mensajeros_urbanos' } });
     if (!settings) return NextResponse.json({ message: 'Configuracion no encontrada para esta ciudad' }, { status: 404 });
 
     await muAddStore({

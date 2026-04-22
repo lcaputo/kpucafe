@@ -24,7 +24,7 @@ export async function POST(
     const cityId = MU_CITY_IDS[order.shippingCity];
     if (!cityId) return NextResponse.json({ message: 'Ciudad no soportada por MU' }, { status: 400 });
 
-    const settings = await prisma.deliverySettings.findUnique({ where: { city: order.shippingCity } });
+    const settings = await prisma.deliverySettings.findFirst({ where: { city: order.shippingCity, provider: 'mensajeros_urbanos' } });
     if (!settings || !settings.enabled) {
       return NextResponse.json({ message: 'Delivery no habilitado para esta ciudad' }, { status: 400 });
     }

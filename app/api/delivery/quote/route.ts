@@ -17,7 +17,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ available: false, reason: 'Ciudad no disponible para delivery express' });
     }
 
-    const settings = await prisma.deliverySettings.findUnique({ where: { city } });
+    const settings = await prisma.deliverySettings.findFirst({ where: { city, provider: 'mensajeros_urbanos' } });
     if (!settings || !settings.enabled) {
       return NextResponse.json({ available: false, reason: 'Delivery express no disponible en esta ciudad' });
     }

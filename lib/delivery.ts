@@ -19,7 +19,7 @@ export async function triggerMuDeliveryIfNeeded(orderId: string): Promise<void> 
     return;
   }
 
-  const settings = await prisma.deliverySettings.findUnique({ where: { city: order.shippingCity } });
+  const settings = await prisma.deliverySettings.findFirst({ where: { city: order.shippingCity, provider: 'mensajeros_urbanos' } });
   if (!settings || !settings.enabled) {
     await prisma.order.update({ where: { id: orderId }, data: { muStatus: 'error' } });
     log({ level: 'error', type: 'delivery', action: 'mu_not_enabled', message: `MU not enabled for ${order.shippingCity}`, metadata: { orderId } });
