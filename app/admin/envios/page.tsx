@@ -22,6 +22,9 @@ interface Order {
   mu_tracking_url: string | null;
   mu_eta: string | null;
   scheduled_date: string | null;
+  envia_carrier: string | null;
+  envia_label_url: string | null;
+  envia_delivery_estimate: string | null;
 }
 
 const MU_STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -67,6 +70,9 @@ export default function AdminShippingPage() {
           mu_tracking_url: o.muTrackingUrl,
           mu_eta: o.muEta,
           scheduled_date: o.scheduledDate,
+          envia_carrier: o.enviaCarrier,
+          envia_label_url: o.enviaLabelUrl,
+          envia_delivery_estimate: o.enviaDeliveryEstimate,
         }));
       setOrders(shippingOrders);
     } catch {
@@ -105,6 +111,17 @@ export default function AdminShippingPage() {
     }
   };
 
+  const retryEnvia = async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/admin/orders/${orderId}/retry-envia`, { method: 'POST' });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      toast({ title: 'Envio Envia reintentado' });
+      fetchPendingShipments();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+  };
+
   const retryMu = async (orderId: string) => {
     try {
       const res = await fetch(`/api/admin/orders/${orderId}/retry-mu`, { method: 'POST' });
@@ -131,9 +148,10 @@ export default function AdminShippingPage() {
     return <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
-  const standardPreparing = orders.filter(o => (o.status === 'paid' || o.status === 'preparing') && o.delivery_method !== 'mensajeros_urbanos');
-  const standardShipped = orders.filter(o => o.status === 'shipped' && o.delivery_method !== 'mensajeros_urbanos');
+  const standardPreparing = orders.filter(o => (o.status === 'paid' || o.status === 'preparing') && o.delivery_method !== 'mensajeros_urbanos' && o.delivery_method !== 'envia');
+  const standardShipped = orders.filter(o => o.status === 'shipped' && o.delivery_method !== 'mensajeros_urbanos' && o.delivery_method !== 'envia');
   const muOrders = orders.filter(o => o.delivery_method === 'mensajeros_urbanos');
+  const enviaOrders = orders.filter(o => o.delivery_method === 'envia');
 
   return (
     <div className="space-y-8">
@@ -305,6 +323,91 @@ export default function AdminShippingPage() {
                             onClick={() => cancelMu(order.id)}
                             className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600 transition-colors">
                             Cancelar MU
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h3 className="font-display text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Package className="h-5 w-5 text-green-500" />Envios Nacionales — Envia ({enviaOrders.length})
+        </h3>
+
+        {enviaOrders.length === 0 ? (
+          <div className="text-center py-12 bg-card rounded-2xl">
+            <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground">No hay pedidos con Envia</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {enviaOrders.map(order => {
+              const canRetry = order.status === 'error';
+              return (
+                <div key={order.id} className="bg-card rounded-xl p-6 shadow-soft border-l-4 border-green-500">
+                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3 flex-wrap">
+                        <span className="text-sm font-medium text-muted-foreground">#{order.id.slice(0, 8).toUpperCase()}</span>
+                        <span className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleDateString('es-CO')}</span>
+                        {order.envia_carrier && (
+                          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-800">
+                            {order.envia_carrier}
+                          </span>
+                        )}
+                        {order.tracking_number && (
+                          <span className="text-xs font-medium text-muted-foreground">Guia: {order.tracking_number}</span>
+                        )}
+                      </div>
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                        <div className="flex items-start gap-2">
+                          <MapPin className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-semibold text-foreground">{order.shipping_name}</p>
+                            <p className="text-sm text-muted-foreground">{order.shipping_phone}</p>
+                            <p className="text-sm text-foreground mt-1">{order.shipping_address}</p>
+                            <p className="text-sm text-foreground">{order.shipping_city}{order.shipping_department && `, ${order.shipping_department}`}</p>
+                          </div>
+                        </div>
+                        {order.envia_delivery_estimate && (
+                          <p className="text-xs text-muted-foreground pt-1">
+                            Entrega estimada: {order.envia_delivery_estimate}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-col gap-3 items-end">
+                      <p className="font-display text-xl font-bold text-foreground">${order.total.toLocaleString('es-CO')}</p>
+                      <div className="flex flex-col gap-2">
+                        {order.envia_label_url && (
+                          <a
+                            href={order.envia_label_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-colors flex items-center gap-2">
+                            <ExternalLink className="h-4 w-4" />Descargar guia
+                          </a>
+                        )}
+                        {order.mu_tracking_url && (
+                          <a
+                            href={order.mu_tracking_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2">
+                            <ExternalLink className="h-4 w-4" />Ver tracking
+                          </a>
+                        )}
+                        {canRetry && (
+                          <button
+                            onClick={() => retryEnvia(order.id)}
+                            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+                            <Package className="h-4 w-4" />Reintentar
                           </button>
                         )}
                       </div>
