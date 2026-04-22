@@ -130,6 +130,16 @@ export default function Checkout() {
   const [showCardForm, setShowCardForm] = useState(false);
   const [saveCardOption, setSaveCardOption] = useState(true);
 
+  // MU delivery state
+  const [muAvailable, setMuAvailable] = useState(false);
+  const [muShippingCost, setMuShippingCost] = useState<number | null>(null);
+  const [muTimeSlots, setMuTimeSlots] = useState<Array<{ label: string; start: string; end: string }>>([]);
+  const [muAvailableDays, setMuAvailableDays] = useState(7);
+  const [muQuoteLoading, setMuQuoteLoading] = useState(false);
+  const [scheduleDelivery, setScheduleDelivery] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState('');
+  const [scheduledSlot, setScheduledSlot] = useState('');
+
   const [form, setForm] = useState<ShippingForm>({
     fullName: '',
     phone: '',
@@ -385,24 +395,37 @@ export default function Checkout() {
   };
 
   // Helper: build order payload
-  const buildOrderPayload = () => ({
-    total: finalTotal,
-    shippingName: form.fullName,
-    shippingPhone: form.phone,
-    shippingAddress: form.address,
-    shippingCity: form.city,
-    shippingDepartment: form.department,
-    shippingPostalCode: form.postalCode || null,
-    notes: form.notes || null,
-    couponId: appliedCoupon?.id || null,
-    discountAmount: discountAmount || 0,
-    items: items.map((item: any) => ({
-      productName: item.name,
-      quantity: item.quantity,
-      unitPrice: item.price,
-      variantInfo: `${item.weight || ''} - ${item.grind || ''}`.trim().replace(/^-\s*|-\s*$/g, '').trim(),
-    })),
-  });
+  const buildOrderPayload = () => {
+    let scheduledDateISO: string | null = null;
+    if (muAvailable && scheduleDelivery && scheduledDate && scheduledSlot) {
+      const slot = muTimeSlots.find((s) => s.label === scheduledSlot);
+      if (slot) {
+        scheduledDateISO = new Date(`${scheduledDate}T${slot.start}`).toISOString();
+      }
+    }
+
+    return {
+      total: finalTotal,
+      shippingName: form.fullName,
+      shippingPhone: form.phone,
+      shippingAddress: form.address,
+      shippingCity: form.city,
+      shippingDepartment: form.department,
+      shippingPostalCode: form.postalCode || null,
+      notes: form.notes || null,
+      couponId: appliedCoupon?.id || null,
+      discountAmount: discountAmount || 0,
+      deliveryMethod: muAvailable ? 'mensajeros_urbanos' : 'standard',
+      shippingCost,
+      scheduledDate: scheduledDateISO,
+      items: items.map((item: any) => ({
+        productName: item.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        variantInfo: `${item.weight || ''} - ${item.grind || ''}`.trim().replace(/^-\s*|-\s*$/g, '').trim(),
+      })),
+    };
+  };
 
   // Called when user clicks "Pagar" with a saved card
   const handlePaymentWithSavedCard = async () => {
@@ -505,7 +528,41 @@ export default function Checkout() {
     setCouponError('');
   };
 
-  const shippingCost = totalPrice >= 100000 ? 0 : 12000;
+  const fetchMuQuote = async (city: string, address: string) => {
+    if (city !== 'Barranquilla' || !address) {
+      setMuAvailable(false);
+      setMuShippingCost(null);
+      return;
+    }
+    setMuQuoteLoading(true);
+    try {
+      const res = await fetch(`/api/delivery/quote?city=${encodeURIComponent(city)}&address=${encodeURIComponent(address)}`);
+      const data = await res.json();
+      if (data.available) {
+        setMuAvailable(true);
+        setMuShippingCost(data.shippingCost);
+        setMuTimeSlots(data.timeSlots || []);
+        setMuAvailableDays(data.availableDays || 7);
+      } else {
+        setMuAvailable(false);
+        setMuShippingCost(null);
+      }
+    } catch {
+      setMuAvailable(false);
+      setMuShippingCost(null);
+    }
+    setMuQuoteLoading(false);
+  };
+
+  useEffect(() => {
+    fetchMuQuote(form.city, form.address);
+  }, [form.city, form.address]);
+
+  const shippingCost = totalPrice >= 100000
+    ? 0
+    : muAvailable && muShippingCost !== null
+      ? muShippingCost
+      : 12000;
   const discountAmount = appliedCoupon
     ? appliedCoupon.discount_type === 'percentage'
       ? Math.round((totalPrice * appliedCoupon.discount_value) / 100)
@@ -849,6 +906,63 @@ export default function Checkout() {
                     />
                   </div>
 
+                  {/* MU Delivery Options */}
+                  {muAvailable && (
+                    <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Truck className="h-5 w-5 text-primary" />
+                        <span className="font-semibold text-foreground">Envio con Mensajeros Urbanos</span>
+                        {muQuoteLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                      </div>
+                      {muShippingCost !== null && (
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Costo de envio: <span className="font-semibold text-foreground">${muShippingCost.toLocaleString('es-CO')}</span>
+                        </p>
+                      )}
+                      <div className="space-y-3">
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input type="radio" name="deliverySchedule" checked={!scheduleDelivery}
+                            onChange={() => setScheduleDelivery(false)}
+                            className="w-4 h-4 text-primary" />
+                          <span className="text-sm text-foreground">Enviar ahora</span>
+                        </label>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                          <input type="radio" name="deliverySchedule" checked={scheduleDelivery}
+                            onChange={() => setScheduleDelivery(true)}
+                            className="w-4 h-4 text-primary" />
+                          <span className="text-sm text-foreground">Programar envio</span>
+                        </label>
+                        {scheduleDelivery && (
+                          <div className="ml-7 space-y-3">
+                            <div>
+                              <label className="text-sm text-muted-foreground mb-1 block">Fecha</label>
+                              <input type="date" className={inputClass('')}
+                                min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                                max={new Date(Date.now() + muAvailableDays * 86400000).toISOString().split('T')[0]}
+                                value={scheduledDate}
+                                onChange={(e) => setScheduledDate(e.target.value)} />
+                            </div>
+                            <div>
+                              <label className="text-sm text-muted-foreground mb-1 block">Franja horaria</label>
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                {muTimeSlots.map((slot) => (
+                                  <button key={slot.label} type="button"
+                                    onClick={() => setScheduledSlot(slot.label)}
+                                    className={`px-3 py-2 rounded-lg border text-sm transition-colors ${scheduledSlot === slot.label
+                                      ? 'border-primary bg-primary/10 text-primary font-medium'
+                                      : 'border-input bg-background text-foreground hover:border-primary/50'
+                                    }`}>
+                                    {slot.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {!editingAddressId && (
                     <button
                       onClick={() => {
@@ -972,7 +1086,18 @@ export default function Checkout() {
                       {discountAmount > 0 && (
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Descuento</span>
-                          <span className="text-green-600 font-medium">-${discountAmount.toLocaleString('es-CO')}</span>
+                          <span className="text-green-600">-${discountAmount.toLocaleString('es-CO')}</span>
+                        </div>
+                      )}
+                      {muAvailable && (
+                        <div className="flex items-center gap-2 py-2">
+                          <Truck className="h-4 w-4 text-primary" />
+                          <span className="text-sm font-medium text-primary">Envio con Mensajeros Urbanos</span>
+                          {scheduleDelivery && scheduledDate && scheduledSlot && (
+                            <span className="text-xs text-muted-foreground">
+                              - Programado: {new Date(scheduledDate + 'T00:00:00').toLocaleDateString('es-CO', { weekday: 'long', month: 'long', day: 'numeric' })} {scheduledSlot}
+                            </span>
+                          )}
                         </div>
                       )}
                       <div className="flex justify-between text-sm">
@@ -989,8 +1114,8 @@ export default function Checkout() {
                         <p className="text-xs text-muted-foreground">Envio gratis en compras mayores a $100.000</p>
                       )}
                       <div className="flex justify-between pt-2 border-t border-border">
-                        <span className="font-semibold text-foreground">Total</span>
-                        <span className="font-display text-xl font-bold text-primary">
+                        <span className="text-foreground">Total</span>
+                        <span className="font-display text-xl text-primary">
                           ${finalTotal.toLocaleString('es-CO')}
                         </span>
                       </div>
