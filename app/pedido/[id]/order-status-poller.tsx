@@ -17,6 +17,9 @@ interface MUOrderData {
   muTrackingUrl?: string | null;
   muEta?: string | null;
   scheduledDate?: string | null;
+  enviaCarrier?: string;
+  enviaDeliveryEstimate?: string;
+  enviaLabelUrl?: string;
 }
 
 interface OrderStatusPollerProps {
@@ -27,15 +30,22 @@ interface OrderStatusPollerProps {
 }
 
 const MU_STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  on_hold:        { label: 'Buscando mensajero...', color: 'text-yellow-600' },
-  assigned:       { label: 'Mensajero asignado',    color: 'text-blue-600'   },
-  picking_up:     { label: 'Recogiendo tu pedido',  color: 'text-orange-600' },
-  delivering:     { label: 'En camino',             color: 'text-primary'    },
-  finished:       { label: 'Entregado',             color: 'text-green-600'  },
-  failed_delivery:{ label: 'Entrega fallida',       color: 'text-red-600'    },
-  cancelled:      { label: 'Envio cancelado',       color: 'text-red-600'    },
-  error:          { label: 'Error en envio',        color: 'text-red-600'    },
-  create:         { label: 'Envio programado',      color: 'text-blue-600'   },
+  on_hold:           { label: 'Buscando mensajero...',       color: 'text-yellow-600' },
+  assigned:          { label: 'Mensajero asignado',          color: 'text-blue-600'   },
+  picking_up:        { label: 'Recogiendo tu pedido',        color: 'text-orange-600' },
+  delivering:        { label: 'En camino',                   color: 'text-primary'    },
+  finished:          { label: 'Entregado',                   color: 'text-green-600'  },
+  failed_delivery:   { label: 'Entrega fallida',             color: 'text-red-600'    },
+  cancelled:         { label: 'Envio cancelado',             color: 'text-red-600'    },
+  error:             { label: 'Error en envio',              color: 'text-red-600'    },
+  create:            { label: 'Envio programado',            color: 'text-blue-600'   },
+  // Envia statuses
+  label_generated:   { label: 'Guia generada',               color: 'text-blue-600'   },
+  picked_up:         { label: 'Recogido por transportadora', color: 'text-blue-600'   },
+  in_transit:        { label: 'En transito',                 color: 'text-primary'    },
+  out_for_delivery:  { label: 'En reparto',                  color: 'text-orange-600' },
+  exception:         { label: 'Problema con envio',          color: 'text-red-600'    },
+  returned:          { label: 'Devuelto',                    color: 'text-red-600'    },
 };
 
 const MU_TERMINAL_STATUSES = ['finished', 'failed_delivery', 'cancelled'];
@@ -66,7 +76,7 @@ export default function OrderStatusPoller({ orderId, initialStatus, order, muDat
   }, []);
 
   useEffect(() => {
-    const isMuOrder = initialMuData?.deliveryMethod === 'mensajeros_urbanos';
+    const isMuOrder = ['mensajeros_urbanos', 'envia'].includes(initialMuData?.deliveryMethod || '');
     const muAlreadyTerminal = isMuOrder && initialMuData?.muStatus
       ? MU_TERMINAL_STATUSES.includes(initialMuData.muStatus)
       : false;
@@ -91,7 +101,7 @@ export default function OrderStatusPoller({ orderId, initialStatus, order, muDat
           setStatus(data.status as OrderStatus);
         }
 
-        // Update MU fields from every poll response
+        // Update MU/Envia fields from every poll response
         setMuOrder({
           deliveryMethod: data.deliveryMethod,
           muStatus: data.muStatus,
@@ -101,6 +111,9 @@ export default function OrderStatusPoller({ orderId, initialStatus, order, muDat
           muTrackingUrl: data.muTrackingUrl,
           muEta: data.muEta,
           scheduledDate: data.scheduledDate,
+          enviaCarrier: data.enviaCarrier,
+          enviaDeliveryEstimate: data.enviaDeliveryEstimate,
+          enviaLabelUrl: data.enviaLabelUrl,
         });
 
         // Stop polling once payment is confirmed (non-pending) AND MU delivery is done (or no MU)
@@ -171,18 +184,27 @@ export default function OrderStatusPoller({ orderId, initialStatus, order, muDat
         </div>
       )}
 
-      {/* MU Delivery Tracking */}
-      {muOrder.deliveryMethod === 'mensajeros_urbanos' && muOrder.muStatus && (
+      {/* MU / Envia Delivery Tracking */}
+      {['mensajeros_urbanos', 'envia'].includes(muOrder.deliveryMethod || '') && muOrder.muStatus && (
         <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/20 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Truck className="h-5 w-5 text-primary" />
-              <span className="font-semibold text-foreground">Mensajeros Urbanos</span>
+              <span className="font-semibold text-foreground">
+                {muOrder.deliveryMethod === 'envia' ? `Envio nacional — ${muOrder.enviaCarrier || 'Coordinadora'}` : 'Mensajeros Urbanos'}
+              </span>
             </div>
             <span className={`text-sm font-medium ${MU_STATUS_CONFIG[muOrder.muStatus]?.color || 'text-muted-foreground'}`}>
               {MU_STATUS_CONFIG[muOrder.muStatus]?.label || muOrder.muStatus}
             </span>
           </div>
+
+          {/* Envia delivery estimate */}
+          {muOrder.deliveryMethod === 'envia' && muOrder.enviaDeliveryEstimate && (
+            <p className="text-sm text-muted-foreground">
+              Entrega estimada: {muOrder.enviaDeliveryEstimate}
+            </p>
+          )}
 
           {/* Driver info */}
           {muOrder.muDriverName && (
@@ -206,6 +228,14 @@ export default function OrderStatusPoller({ orderId, initialStatus, order, muDat
               className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors">
               Ver en mapa
               <ExternalLink className="h-4 w-4" />
+            </a>
+          )}
+
+          {/* Envia label download */}
+          {muOrder.deliveryMethod === 'envia' && muOrder.enviaLabelUrl && (
+            <a href={muOrder.enviaLabelUrl} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 border border-primary text-primary rounded-lg text-sm font-medium hover:bg-primary/5 transition-colors">
+              Descargar guia PDF
             </a>
           )}
 

@@ -96,6 +96,9 @@ export default async function OrderPage({
                   muTrackingUrl: order.muTrackingUrl,
                   muEta: order.muEta,
                   scheduledDate: order.scheduledDate?.toISOString() ?? null,
+                  enviaCarrier: order.enviaCarrier ?? undefined,
+                  enviaDeliveryEstimate: order.enviaDeliveryEstimate ?? undefined,
+                  enviaLabelUrl: order.enviaLabelUrl ?? undefined,
                 }}
               />
             </div>
