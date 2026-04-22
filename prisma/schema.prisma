@@ -175,6 +175,17 @@ model Order {
   trackingNumber     String?     @map("tracking_number")
   paymentReference   String?     @map("payment_reference")
   notes              String?
+  deliveryMethod     String?     @map("delivery_method")
+  shippingCost       Int?        @map("shipping_cost")
+  scheduledDate      DateTime?   @map("scheduled_date") @db.Timestamptz
+  muUuid             String?     @map("mu_uuid")
+  muTaskId           Int?        @map("mu_task_id")
+  muStatus           String?     @map("mu_status")
+  muDriverName       String?     @map("mu_driver_name")
+  muDriverPhone      String?     @map("mu_driver_phone")
+  muDriverPlate      String?     @map("mu_driver_plate")
+  muTrackingUrl      String?     @map("mu_tracking_url")
+  muEta              String?     @map("mu_eta")
   createdAt          DateTime    @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime    @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -374,4 +385,25 @@ model AppLog {
   @@index([userId])
   @@index([createdAt])
   @@map("app_logs")
+}
+
+// -- Delivery Settings --
+
+model DeliverySettings {
+  id              String   @id @default(uuid()) @db.Uuid
+  city            String   @unique
+  enabled         Boolean  @default(true)
+  muAccessToken   String   @map("mu_access_token")
+  muWebhookToken  String   @map("mu_webhook_token")
+  pickupAddress   String   @map("pickup_address")
+  pickupCity      String   @map("pickup_city")
+  pickupStoreId   String   @map("pickup_store_id")
+  pickupStoreName String   @map("pickup_store_name")
+  pickupPhone     String   @map("pickup_phone")
+  timeSlots       Json     @default("[]") @map("time_slots")
+  availableDays   Int      @default(7) @map("available_days")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("delivery_settings")
 }

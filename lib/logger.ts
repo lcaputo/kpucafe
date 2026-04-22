@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 
 export type LogLevel = 'info' | 'warn' | 'error';
-export type LogType = 'auth' | 'order' | 'payment' | 'subscription' | 'admin' | 'system';
+export type LogType = 'auth' | 'order' | 'payment' | 'subscription' | 'admin' | 'system' | 'delivery';
 
 export interface LogParams {
   level: LogLevel;
