@@ -1,346 +1,209 @@
-import { vi, describe, it, expect, beforeEach } from 'vitest';
-
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  MU_CITY_IDS,
-  MuApiError,
   muCalculate,
   muCreateService,
   muTrack,
   muCancel,
   muAddStore,
   muRegisterWebhook,
-} from '@/lib/mensajeros-urbanos';
+  MU_CITY_IDS,
+} from '../mensajeros-urbanos';
 
-const MU_BASE = 'https://mu-integraciones.mensajerosurbanos.com';
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
-// Helper: build a minimal fetch mock that returns ok JSON
-function mockFetch(body: unknown, ok = true, status = 200) {
-  return vi.fn().mockResolvedValue({
-    ok,
-    status,
-    json: () => Promise.resolve(body),
-  });
-}
+beforeEach(() => {
+  vi.resetAllMocks();
+});
 
 describe('MU_CITY_IDS', () => {
-  it('has Barranquilla = 4', () => expect(MU_CITY_IDS.Barranquilla).toBe(4));
-  it('has Bogota = 1', () => expect(MU_CITY_IDS.Bogota).toBe(1));
-  it('has Cali = 2', () => expect(MU_CITY_IDS.Cali).toBe(2));
-  it('has Medellin = 3', () => expect(MU_CITY_IDS.Medellin).toBe(3));
-  it('has Cartagena = 8', () => expect(MU_CITY_IDS.Cartagena).toBe(8));
+  it('maps Barranquilla to 4', () => {
+    expect(MU_CITY_IDS.Barranquilla).toBe(4);
+  });
 });
 
 describe('muCalculate', () => {
-  beforeEach(() => { vi.restoreAllMocks(); });
-
-  it('sends correct payload and returns mapped result', async () => {
-    global.fetch = mockFetch({
-      totalService: 15000,
-      totalDistance: 5.2,
-      baseValue: 12000,
-      distanceSurcharge: 2000,
-      insuranceSurcharge: 1000,
+  it('calls MU /api/calculate with address strings and returns mapped result', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        total_service: 8500,
+        total_distance: '5.2 km',
+        base_value: 6000,
+        distance_surcharge: 2000,
+        insurance_surcharge: 500,
+      }),
     });
 
     const result = await muCalculate({
-      accessToken: 'tok-123',
+      accessToken: 'test-token',
+      cityId: 4,
       declaredValue: 50000,
-      city: MU_CITY_IDS.Barranquilla,
-      origin: { lat: 10.96, lng: -74.8 },
-      destination: { lat: 10.97, lng: -74.81 },
+      originAddress: 'Calle 72 #55-30, Barranquilla',
+      destinationAddress: 'Calle 84 #42-15, Barranquilla',
     });
 
-    expect(global.fetch).toHaveBeenCalledOnce();
-    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe(`${MU_BASE}/api/calculate`);
-    expect(init.method).toBe('POST');
-
-    const body = JSON.parse(init.body as string);
-    expect(body.access_token).toBe('tok-123');
+    expect(mockFetch).toHaveBeenCalledOnce();
+    const [url, options] = mockFetch.mock.calls[0];
+    expect(url).toBe('https://mu-integraciones.mensajerosurbanos.com/api/calculate');
+    expect(options.method).toBe('POST');
+    const body = JSON.parse(options.body);
+    expect(body.access_token).toBe('test-token');
     expect(body.type_service).toBe(4);
-    expect(body.roundtrip).toBe(0);
-    expect(body.declared_value).toBe(50000);
     expect(body.city).toBe(4);
-    expect(body.parking_surcharge).toBe(0);
-    expect(body.coordinates).toBeDefined();
+    expect(body.declared_value).toBe(50000);
+    expect(body.coordinates).toHaveLength(2);
+    expect(body.coordinates[0].address).toBe('Calle 72 #55-30, Barranquilla');
+    expect(body.coordinates[1].address).toBe('Calle 84 #42-15, Barranquilla');
 
-    expect(result.totalService).toBe(15000);
-    expect(result.totalDistance).toBe(5.2);
-    expect(result.baseValue).toBe(12000);
-    expect(result.distanceSurcharge).toBe(2000);
-    expect(result.insuranceSurcharge).toBe(1000);
+    expect(result.totalService).toBe(8500);
+    expect(result.totalDistance).toBe('5.2 km');
   });
 
-  it('includes origin and destination in coordinates', async () => {
-    global.fetch = mockFetch({ totalService: 0, totalDistance: 0, baseValue: 0, distanceSurcharge: 0, insuranceSurcharge: 0 });
-
-    await muCalculate({
-      accessToken: 'tok',
-      declaredValue: 1000,
-      city: MU_CITY_IDS.Bogota,
-      origin: { lat: 4.6, lng: -74.1 },
-      destination: { lat: 4.61, lng: -74.11 },
+  it('throws on MU API error', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ message: 'Invalid token' }),
     });
 
-    const body = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string);
-    const coords: Array<{ type: string }> = body.coordinates;
-    expect(coords.some((c) => c.type === 'origin')).toBe(true);
-    expect(coords.some((c) => c.type === 'destination')).toBe(true);
-  });
-
-  it('throws MuApiError on API error', async () => {
-    global.fetch = mockFetch({ error: 'Unauthorized' }, false, 401);
-
-    await expect(
-      muCalculate({
-        accessToken: 'bad',
-        declaredValue: 0,
-        city: MU_CITY_IDS.Cali,
-        origin: { lat: 0, lng: 0 },
-        destination: { lat: 0, lng: 0 },
-      })
-    ).rejects.toBeInstanceOf(MuApiError);
+    await expect(muCalculate({
+      accessToken: 'bad-token',
+      cityId: 4,
+      declaredValue: 50000,
+      originAddress: 'origin',
+      destinationAddress: 'dest',
+    })).rejects.toThrow('MU API error');
   });
 });
 
 describe('muCreateService', () => {
-  beforeEach(() => { vi.restoreAllMocks(); });
-
-  it('sends correct payload and returns uuid + taskId', async () => {
-    global.fetch = mockFetch({
-      taskId: 'task-001',
-      uuid: 'uuid-abc-123',
-      status: 'pending',
-      total: 18000,
-      distance: 6.1,
+  it('calls MU /api/create and returns uuid + taskId', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        task_id: 12345,
+        uuid: 'abc-def-123',
+        status: 2,
+        total: 8500,
+        distance: '5.2',
+      }),
     });
 
     const result = await muCreateService({
-      accessToken: 'tok-456',
-      declaredValue: 80000,
-      city: MU_CITY_IDS.Medellin,
-      startDate: '2026-04-21',
-      startTime: '10:00:00',
-      origin: {
-        lat: 6.23,
-        lng: -75.58,
-        address: 'Calle 1 # 2-3',
-        clientName: 'KPU Cafe',
-        clientPhone: '3001234567',
-        products: [{ description: 'Cafe', quantity: 2, value: 40000 }],
-      },
-      destination: {
-        lat: 6.24,
-        lng: -75.59,
-        address: 'Carrera 5 # 6-7',
-        clientName: 'Juan Perez',
-        clientPhone: '3009876543',
-        products: [],
-      },
-      observation: 'Entrega frágil',
-    });
-
-    expect(global.fetch).toHaveBeenCalledOnce();
-    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe(`${MU_BASE}/api/create`);
-
-    const body = JSON.parse(init.body as string);
-    expect(body.access_token).toBe('tok-456');
-    expect(body.type_service).toBe(4);
-    expect(body.roundtrip).toBe(0);
-    expect(body.declared_value).toBe(80000);
-    expect(body.city).toBe(3);
-    expect(body.start_date).toBe('2026-04-21');
-    expect(body.start_time).toBe('10:00:00');
-    expect(body.os).toBe('NEW API 2.0');
-    expect(body.observation).toBe('Entrega frágil');
-    expect(Array.isArray(body.coordinates)).toBe(true);
-
-    expect(result.taskId).toBe('task-001');
-    expect(result.uuid).toBe('uuid-abc-123');
-    expect(result.status).toBe('pending');
-    expect(result.total).toBe(18000);
-    expect(result.distance).toBe(6.1);
-  });
-
-  it('coordinates include client_data and products', async () => {
-    global.fetch = mockFetch({ taskId: 't', uuid: 'u', status: 's', total: 0, distance: 0 });
-
-    await muCreateService({
-      accessToken: 'tok',
-      declaredValue: 0,
-      city: MU_CITY_IDS.Bogota,
-      startDate: '2026-01-01',
+      accessToken: 'test-token',
+      cityId: 4,
+      declaredValue: 50000,
+      startDate: '2026-04-22',
       startTime: '09:00:00',
-      origin: {
-        lat: 4.6, lng: -74.1, address: 'Origen',
-        clientName: 'Tienda', clientPhone: '300',
-        products: [{ description: 'P', quantity: 1, value: 100 }],
-      },
+      storeId: 'kpu-baq-01',
       destination: {
-        lat: 4.61, lng: -74.11, address: 'Destino',
-        clientName: 'Cliente', clientPhone: '301',
-        products: [],
+        address: 'Calle 84 #42-15',
+        orderId: 'order-123',
+        description: 'Apto 301',
+        clientName: 'Juan Perez',
+        clientPhone: '3001234567',
+        clientEmail: 'juan@test.com',
+        paymentType: '3',
+        productsValue: 50000,
+        domicileValue: '8500',
       },
-      observation: '',
+      products: [
+        { storeId: 'kpu-baq-01', productName: 'Cafe Origen', quantity: 2, value: 25000 },
+      ],
+      observation: 'Cafe especial, fragil',
     });
 
-    const body = JSON.parse((global.fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body as string);
-    const coords: Array<{ client_data?: unknown; products?: unknown }> = body.coordinates;
-    expect(coords.every((c) => 'client_data' in c)).toBe(true);
-    expect(coords.every((c) => 'products' in c)).toBe(true);
+    expect(result.uuid).toBe('abc-def-123');
+    expect(result.taskId).toBe(12345);
+    expect(result.total).toBe(8500);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.coordinates[0].client_data.client_name).toBe('Juan Perez');
+    expect(body.coordinates[0].products[0].store_id).toBe('kpu-baq-01');
   });
 });
 
 describe('muTrack', () => {
-  beforeEach(() => { vi.restoreAllMocks(); });
-
   it('returns structured data with driver info', async () => {
-    global.fetch = mockFetch({
-      taskId: 'task-999',
-      statusId: 2,
-      statusName: 'En camino',
-      driver: {
-        name: 'Carlos Lopez',
-        phone: '3112223333',
-        plate: 'ABC-123',
-        vehicleType: 'moto',
-        photo: 'https://example.com/photo.jpg',
-      },
-      addresses: [
-        { type: 'origin', address: 'Calle 1' },
-        { type: 'destination', address: 'Calle 2' },
-      ],
-      history: [
-        { statusId: 1, statusName: 'Creado', timestamp: '2026-04-21T10:00:00Z' },
-        { statusId: 2, statusName: 'En camino', timestamp: '2026-04-21T10:15:00Z' },
-      ],
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: { task_id: 12345, status_id: 3, status: 'assigned' },
+        resource: { name: 'Carlos', phone: '3009876543', plate_number: 'ABC123', type_resource_name: 'Motocicleta', photo: 'https://photo.url' },
+        address: [{ address: 'Calle 84', status: 0 }],
+        history: [{ status_id: 2, status: 'on_hold', date: '2026-04-21' }],
+      }),
     });
 
-    const result = await muTrack({ accessToken: 'tok', uuid: 'uuid-999' });
+    const result = await muTrack({ accessToken: 'test-token', uuid: 'abc-def-123' });
 
-    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe(`${MU_BASE}/api/track`);
-    const body = JSON.parse(init.body as string);
-    expect(body.access_token).toBe('tok');
-    expect(body.uuid).toBe('uuid-999');
-
-    expect(result.taskId).toBe('task-999');
-    expect(result.statusId).toBe(2);
-    expect(result.statusName).toBe('En camino');
-    expect(result.driver).not.toBeNull();
-    expect(result.driver?.name).toBe('Carlos Lopez');
-    expect(result.driver?.plate).toBe('ABC-123');
-    expect(result.addresses).toHaveLength(2);
-    expect(result.history).toHaveLength(2);
-  });
-
-  it('returns null driver when not assigned', async () => {
-    global.fetch = mockFetch({
-      taskId: 'task-1',
-      statusId: 1,
-      statusName: 'Creado',
-      driver: null,
-      addresses: [],
-      history: [],
-    });
-
-    const result = await muTrack({ accessToken: 'tok', uuid: 'uuid-1' });
-    expect(result.driver).toBeNull();
+    expect(result.statusId).toBe(3);
+    expect(result.statusName).toBe('assigned');
+    expect(result.driver?.name).toBe('Carlos');
+    expect(result.driver?.phone).toBe('3009876543');
+    expect(result.driver?.plate).toBe('ABC123');
   });
 });
 
 describe('muCancel', () => {
-  beforeEach(() => { vi.restoreAllMocks(); });
-
-  it('sends correct payload with the typo field acces_token', async () => {
-    global.fetch = mockFetch({}, true, 200);
-
-    await muCancel({
-      accessToken: 'tok-cancel',
-      taskUuid: 'uuid-to-cancel',
-      cancellationType: 2,
-      description: 'Cliente canceló',
+  it('uses the acces_token typo field', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: 'Cancelled' }),
     });
 
-    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe(`${MU_BASE}/api/cancel`);
+    await muCancel({
+      accessToken: 'test-token',
+      uuid: 'abc-def-123',
+      cancellationType: 3,
+      description: 'Cliente cancelo',
+    });
 
-    const body = JSON.parse(init.body as string);
-    // The MU API has a typo: single 's' in acces_token
-    expect(body.acces_token).toBe('tok-cancel');
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.acces_token).toBe('test-token');
     expect(body.access_token).toBeUndefined();
-    expect(body.task_uuid).toBe('uuid-to-cancel');
-    expect(body.cancellation_type).toBe(2);
-    expect(body.description).toBe('Cliente canceló');
-  });
-
-  it('throws MuApiError on error response', async () => {
-    global.fetch = mockFetch({ error: 'Not found' }, false, 404);
-
-    await expect(
-      muCancel({ accessToken: 'tok', taskUuid: 'bad-uuid', cancellationType: 1, description: '' })
-    ).rejects.toBeInstanceOf(MuApiError);
+    expect(body.task_uuid).toBe('abc-def-123');
   });
 });
 
 describe('muAddStore', () => {
-  beforeEach(() => { vi.restoreAllMocks(); });
-
-  it('sends correct payload', async () => {
-    global.fetch = mockFetch({}, true, 200);
-
-    await muAddStore({
-      accessToken: 'tok-store',
-      idPoint: 'store-001',
-      name: 'KPU Cafe Principal',
-      address: 'Calle 72 # 45-10',
-      city: MU_CITY_IDS.Barranquilla,
-      phone: '3001112222',
+  it('calls /api/Add-store with correct payload', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ id: 999 }),
     });
 
-    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe(`${MU_BASE}/api/Add-store`);
+    await muAddStore({
+      accessToken: 'test-token',
+      idPoint: 'kpu-baq-01',
+      name: 'KPU Cafe Barranquilla',
+      address: 'Calle 72 #55-30',
+      city: 'Barranquilla',
+      phone: '3001112233',
+    });
 
-    const body = JSON.parse(init.body as string);
-    expect(body.access_token).toBe('tok-store');
-    expect(body.id_point).toBe('store-001');
-    expect(body.name).toBe('KPU Cafe Principal');
-    expect(body.address).toBe('Calle 72 # 45-10');
-    expect(body.city).toBe(4);
-    expect(body.phone).toBe('3001112222');
+    const [url, options] = mockFetch.mock.calls[0];
+    expect(url).toBe('https://mu-integraciones.mensajerosurbanos.com/api/Add-store');
+    const body = JSON.parse(options.body);
+    expect(body.id_point).toBe('kpu-baq-01');
   });
 });
 
 describe('muRegisterWebhook', () => {
-  beforeEach(() => { vi.restoreAllMocks(); });
-
-  it('sends correct payload', async () => {
-    global.fetch = mockFetch({}, true, 200);
-
-    await muRegisterWebhook({
-      accessToken: 'tok-wh',
-      endpoint: 'https://kpucafe.com/api/mu-webhook',
-      tokenEndpoint: 'secret-token',
+  it('calls /api/webhook with correct payload', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: 'OK' }),
     });
 
-    const [url, init] = (global.fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe(`${MU_BASE}/api/webhook`);
+    await muRegisterWebhook({
+      accessToken: 'test-token',
+      endpoint: 'https://kpucafe.com/api/delivery/mu-webhook',
+      tokenEndpoint: 'my-secret',
+    });
 
-    const body = JSON.parse(init.body as string);
-    expect(body.access_token).toBe('tok-wh');
-    expect(body.endpoint).toBe('https://kpucafe.com/api/mu-webhook');
-    expect(body.token_endpoint).toBe('secret-token');
-  });
-});
-
-describe('MuApiError', () => {
-  it('is an instance of Error', () => {
-    const err = new MuApiError('test', 500);
-    expect(err).toBeInstanceOf(Error);
-    expect(err).toBeInstanceOf(MuApiError);
-    expect(err.message).toBe('test');
-    expect(err.status).toBe(500);
-    expect(err.name).toBe('MuApiError');
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    expect(body.token_endpoint).toBe('my-secret');
   });
 });

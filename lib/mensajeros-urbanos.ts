@@ -1,277 +1,108 @@
-const MU_BASE = 'https://mu-integraciones.mensajerosurbanos.com';
+const MU_BASE_URL = 'https://mu-integraciones.mensajerosurbanos.com';
 
-// ---------------------------------------------------------------------------
-// City IDs
-// ---------------------------------------------------------------------------
-
-export const MU_CITY_IDS = {
+export const MU_CITY_IDS: Record<string, number> = {
+  Barranquilla: 4,
   Bogota: 1,
   Cali: 2,
   Medellin: 3,
-  Barranquilla: 4,
   Cartagena: 8,
-} as const;
+};
 
-export type MuCityId = (typeof MU_CITY_IDS)[keyof typeof MU_CITY_IDS];
-
-// ---------------------------------------------------------------------------
-// Error class
-// ---------------------------------------------------------------------------
-
-export class MuApiError extends Error {
-  status: number;
-  constructor(message: string, status: number = 0) {
-    super(message);
-    this.name = 'MuApiError';
-    this.status = status;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Shared interfaces
-// ---------------------------------------------------------------------------
-
-export interface MuCoordinate {
-  /** 'origin' | 'destination' */
-  type: 'origin' | 'destination';
-  lat: number;
-  lng: number;
-  address: string;
-  /** Used in muCreateService */
-  client_data?: MuClientData;
-  products?: MuProduct[];
-}
-
-export interface MuClientData {
-  name: string;
-  phone: string;
-}
-
-export interface MuProduct {
-  description: string;
-  quantity: number;
-  value: number;
-}
-
-// ---------------------------------------------------------------------------
-// muCalculate
-// ---------------------------------------------------------------------------
+// --- Types ---
 
 export interface MuCalculateParams {
   accessToken: string;
+  cityId: number;
   declaredValue: number;
-  city: MuCityId;
-  origin: { lat: number; lng: number };
-  destination: { lat: number; lng: number };
+  originAddress: string;
+  destinationAddress: string;
 }
 
 export interface MuCalculateResult {
   totalService: number;
-  totalDistance: number;
+  totalDistance: string;
   baseValue: number;
   distanceSurcharge: number;
   insuranceSurcharge: number;
 }
 
-export async function muCalculate(params: MuCalculateParams): Promise<MuCalculateResult> {
-  const body = {
-    access_token: params.accessToken,
-    type_service: 4,
-    roundtrip: 0,
-    declared_value: params.declaredValue,
-    city: params.city,
-    parking_surcharge: 0,
-    coordinates: [
-      { type: 'origin', lat: params.origin.lat, lng: params.origin.lng },
-      { type: 'destination', lat: params.destination.lat, lng: params.destination.lng },
-    ],
-  };
-
-  const data = await muPost<MuCalculateResult>('/api/calculate', body);
-  return {
-    totalService: data.totalService,
-    totalDistance: data.totalDistance,
-    baseValue: data.baseValue,
-    distanceSurcharge: data.distanceSurcharge,
-    insuranceSurcharge: data.insuranceSurcharge,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// muCreateService
-// ---------------------------------------------------------------------------
-
-export interface MuCreateAddressParams {
-  lat: number;
-  lng: number;
+export interface MuDestination {
   address: string;
+  orderId: string;
+  description: string;
   clientName: string;
   clientPhone: string;
-  products: MuProduct[];
+  clientEmail?: string;
+  paymentType: '1' | '2' | '3';
+  productsValue: number;
+  domicileValue: string;
 }
 
-export interface MuCreateServiceParams {
+export interface MuProduct {
+  storeId: string;
+  productName: string;
+  quantity: number;
+  value: number;
+  sku?: string;
+}
+
+export interface MuCreateParams {
   accessToken: string;
+  cityId: number;
   declaredValue: number;
-  city: MuCityId;
   startDate: string; // YYYY-mm-dd
   startTime: string; // HH:MM:ss
-  origin: MuCreateAddressParams;
-  destination: MuCreateAddressParams;
-  observation: string;
+  storeId: string;
+  destination: MuDestination;
+  products: MuProduct[];
+  observation?: string;
 }
 
-export interface MuCreateServiceResult {
-  taskId: string;
+export interface MuCreateResult {
+  taskId: number;
   uuid: string;
-  status: string;
+  status: number;
   total: number;
-  distance: number;
+  distance: string;
 }
-
-export async function muCreateService(params: MuCreateServiceParams): Promise<MuCreateServiceResult> {
-  const toCoord = (addr: MuCreateAddressParams, type: 'origin' | 'destination'): MuCoordinate => ({
-    type,
-    lat: addr.lat,
-    lng: addr.lng,
-    address: addr.address,
-    client_data: { name: addr.clientName, phone: addr.clientPhone },
-    products: addr.products,
-  });
-
-  const body = {
-    access_token: params.accessToken,
-    type_service: 4,
-    roundtrip: 0,
-    declared_value: params.declaredValue,
-    city: params.city,
-    start_date: params.startDate,
-    start_time: params.startTime,
-    os: 'NEW API 2.0',
-    coordinates: [
-      toCoord(params.origin, 'origin'),
-      toCoord(params.destination, 'destination'),
-    ],
-    observation: params.observation,
-  };
-
-  const data = await muPost<MuCreateServiceResult>('/api/create', body);
-  return {
-    taskId: data.taskId,
-    uuid: data.uuid,
-    status: data.status,
-    total: data.total,
-    distance: data.distance,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// muTrack
-// ---------------------------------------------------------------------------
 
 export interface MuTrackParams {
   accessToken: string;
   uuid: string;
 }
 
-export interface MuDriverInfo {
+export interface MuDriver {
   name: string;
   phone: string;
   plate: string;
   vehicleType: string;
-  photo: string | null;
-}
-
-export interface MuTrackAddress {
-  type: string;
-  address: string;
-}
-
-export interface MuTrackHistoryEntry {
-  statusId: number;
-  statusName: string;
-  timestamp: string;
+  photo: string;
 }
 
 export interface MuTrackResult {
-  taskId: string;
+  taskId: number;
   statusId: number;
   statusName: string;
-  driver: MuDriverInfo | null;
-  addresses: MuTrackAddress[];
-  history: MuTrackHistoryEntry[];
+  driver: MuDriver | null;
+  addresses: Array<{ address: string; status: number }>;
+  history: Array<{ statusId: number; status: string; date: string }>;
 }
-
-export async function muTrack(params: MuTrackParams): Promise<MuTrackResult> {
-  const body = {
-    access_token: params.accessToken,
-    uuid: params.uuid,
-  };
-
-  const data = await muPost<MuTrackResult>('/api/track', body);
-  return {
-    taskId: data.taskId,
-    statusId: data.statusId,
-    statusName: data.statusName,
-    driver: data.driver ?? null,
-    addresses: data.addresses ?? [],
-    history: data.history ?? [],
-  };
-}
-
-// ---------------------------------------------------------------------------
-// muCancel
-// ---------------------------------------------------------------------------
 
 export interface MuCancelParams {
   accessToken: string;
-  taskUuid: string;
-  /** 1–4 */
-  cancellationType: number;
+  uuid: string;
+  cancellationType: 1 | 2 | 3 | 4;
   description: string;
 }
-
-export async function muCancel(params: MuCancelParams): Promise<void> {
-  // NOTE: The MU API has a typo — the field is `acces_token` (single 's')
-  const body = {
-    acces_token: params.accessToken,
-    task_uuid: params.taskUuid,
-    cancellation_type: params.cancellationType,
-    description: params.description,
-  };
-
-  await muPost<unknown>('/api/cancel', body);
-}
-
-// ---------------------------------------------------------------------------
-// muAddStore
-// ---------------------------------------------------------------------------
 
 export interface MuAddStoreParams {
   accessToken: string;
   idPoint: string;
   name: string;
   address: string;
-  city: MuCityId;
-  phone: string;
+  city: string;
+  phone?: string;
 }
-
-export async function muAddStore(params: MuAddStoreParams): Promise<void> {
-  const body = {
-    access_token: params.accessToken,
-    id_point: params.idPoint,
-    name: params.name,
-    address: params.address,
-    city: params.city,
-    phone: params.phone,
-  };
-
-  await muPost<unknown>('/api/Add-store', body);
-}
-
-// ---------------------------------------------------------------------------
-// muRegisterWebhook
-// ---------------------------------------------------------------------------
 
 export interface MuRegisterWebhookParams {
   accessToken: string;
@@ -279,46 +110,157 @@ export interface MuRegisterWebhookParams {
   tokenEndpoint: string;
 }
 
+// --- Error class ---
+
+export class MuApiError extends Error {
+  constructor(public status: number, message: string) {
+    super(`MU API error (${status}): ${message}`);
+    this.name = 'MuApiError';
+  }
+}
+
+// --- Shared POST helper ---
+
+async function muPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
+  const res = await fetch(`${MU_BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new MuApiError(res.status, data.message || JSON.stringify(data));
+  }
+  return data as T;
+}
+
+// --- API Functions ---
+
+export async function muCalculate(params: MuCalculateParams): Promise<MuCalculateResult> {
+  const data = await muPost<any>('/api/calculate', {
+    access_token: params.accessToken,
+    type_service: 4,
+    roundtrip: 0,
+    declared_value: params.declaredValue,
+    city: params.cityId,
+    parking_surcharge: 0,
+    coordinates: [
+      { type: '1', address: params.originAddress },
+      { type: '1', address: params.destinationAddress },
+    ],
+  });
+
+  return {
+    totalService: data.total_service,
+    totalDistance: data.total_distance,
+    baseValue: data.base_value,
+    distanceSurcharge: data.distance_surcharge,
+    insuranceSurcharge: data.insurance_surcharge,
+  };
+}
+
+export async function muCreateService(params: MuCreateParams): Promise<MuCreateResult> {
+  const data = await muPost<any>('/api/create', {
+    access_token: params.accessToken,
+    type_service: 4,
+    roundtrip: 0,
+    declared_value: params.declaredValue,
+    city: params.cityId,
+    start_date: params.startDate,
+    start_time: params.startTime,
+    os: 'NEW API 2.0',
+    coordinates: [
+      {
+        type: '1',
+        address: params.destination.address,
+        order_id: params.destination.orderId,
+        description: params.destination.description,
+        client_data: {
+          client_name: params.destination.clientName,
+          client_phone: params.destination.clientPhone,
+          client_email: params.destination.clientEmail || '',
+          payment_type: params.destination.paymentType,
+          products_value: params.destination.productsValue,
+          domicile_value: params.destination.domicileValue,
+        },
+        products: params.products.map((p) => ({
+          store_id: p.storeId,
+          product_name: p.productName,
+          quantity: p.quantity,
+          value: p.value,
+          sku: p.sku || '',
+        })),
+      },
+    ],
+    observation: params.observation || '',
+  });
+
+  return {
+    taskId: data.task_id,
+    uuid: data.uuid,
+    status: data.status,
+    total: data.total,
+    distance: data.distance,
+  };
+}
+
+export async function muTrack(params: MuTrackParams): Promise<MuTrackResult> {
+  const data = await muPost<any>('/api/track', {
+    access_token: params.accessToken,
+    uuid: params.uuid,
+  });
+
+  const resource = data.resource;
+  return {
+    taskId: data.data?.task_id,
+    statusId: data.data?.status_id,
+    statusName: data.data?.status,
+    driver: resource
+      ? {
+          name: resource.name,
+          phone: resource.phone,
+          plate: resource.plate_number,
+          vehicleType: resource.type_resource_name,
+          photo: resource.photo,
+        }
+      : null,
+    addresses: (data.address || []).map((a: any) => ({
+      address: a.address,
+      status: a.status,
+    })),
+    history: (data.history || []).map((h: any) => ({
+      statusId: h.status_id,
+      status: h.status,
+      date: h.date,
+    })),
+  };
+}
+
+export async function muCancel(params: MuCancelParams): Promise<void> {
+  await muPost('/api/cancel', {
+    acces_token: params.accessToken, // Note: MU API has typo "acces_token"
+    task_uuid: params.uuid,
+    cancellation_type: params.cancellationType,
+    description: params.description,
+  });
+}
+
+export async function muAddStore(params: MuAddStoreParams): Promise<void> {
+  await muPost('/api/Add-store', {
+    access_token: params.accessToken,
+    id_point: params.idPoint,
+    name: params.name,
+    address: params.address,
+    city: params.city,
+    phone: params.phone || '',
+  });
+}
+
 export async function muRegisterWebhook(params: MuRegisterWebhookParams): Promise<void> {
-  const body = {
+  await muPost('/api/webhook', {
     access_token: params.accessToken,
     endpoint: params.endpoint,
     token_endpoint: params.tokenEndpoint,
-  };
-
-  await muPost<unknown>('/api/webhook', body);
-}
-
-// ---------------------------------------------------------------------------
-// Shared POST helper
-// ---------------------------------------------------------------------------
-
-async function muPost<T>(path: string, body: unknown): Promise<T> {
-  let res: Response;
-  try {
-    res = await fetch(`${MU_BASE}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    throw new MuApiError(
-      `Error de red al contactar Mensajeros Urbanos: ${(err as Error).message}`,
-      0,
-    );
-  }
-
-  if (!res.ok) {
-    let message = `Mensajeros Urbanos API error: HTTP ${res.status}`;
-    try {
-      const errBody = await res.json();
-      if (errBody?.error) message = String(errBody.error);
-      else if (errBody?.message) message = String(errBody.message);
-    } catch {
-      // ignore JSON parse errors — keep the HTTP status message
-    }
-    throw new MuApiError(message, res.status);
-  }
-
-  return res.json() as Promise<T>;
+  });
 }
