@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { tokenizeCard, createCustomer, chargeCard, EpaycoError } from '@/lib/epayco';
+import { triggerMuDeliveryIfNeeded } from '@/lib/delivery';
 
 // Tokenize + create customer + charge without saving to DB
 export async function POST(req: Request) {
@@ -56,6 +57,8 @@ export async function POST(req: Request) {
         where: { id: orderId },
         data: { status: 'paid', paymentReference: result.epaycoRef },
       });
+      // Trigger MU delivery for Barranquilla orders
+      triggerMuDeliveryIfNeeded(orderId).catch(() => {});
     } else if (result.status === 'rejected') {
       await prisma.order.update({
         where: { id: orderId },

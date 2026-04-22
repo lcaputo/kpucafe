@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { requireAuth } from '@/lib/auth';
 import { chargeCard, EpaycoError } from '@/lib/epayco';
 import { log } from '@/lib/logger';
+import { triggerMuDeliveryIfNeeded } from '@/lib/delivery';
 
 export async function POST(
   req: Request,
@@ -90,6 +91,8 @@ export async function POST(
         data: { status: 'paid', paymentReference: result.epaycoRef },
       });
       log({ level: 'info', type: 'payment', action: 'charge_approved', message: 'Cobro aprobado', userId: session.id, metadata: { orderId: targetOrderId, amount, epaycoRef: result.epaycoRef } });
+      // Trigger MU delivery for Barranquilla orders
+      if (targetOrderId) triggerMuDeliveryIfNeeded(targetOrderId).catch(() => {});
     } else if (result.status === 'rejected') {
       await prisma.order.update({
         where: { id: targetOrderId },
