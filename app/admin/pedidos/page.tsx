@@ -383,6 +383,30 @@ export default function AdminOrdersPage() {
                                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
                                   </div>
                                 )}
+                                {/* MU Delivery Info */}
+                                {order.deliveryMethod === 'mensajeros_urbanos' && (
+                                  <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg space-y-2">
+                                    <p className="text-sm font-medium text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                                      <Truck className="h-4 w-4" />Mensajeros Urbanos
+                                    </p>
+                                    <p className="text-sm"><span className="text-muted-foreground">Estado MU:</span> {order.muStatus || 'Pendiente'}</p>
+                                    {order.muDriverName && (
+                                      <p className="text-sm"><span className="text-muted-foreground">Mensajero:</span> {order.muDriverName} {order.muDriverPhone && `(${order.muDriverPhone})`}</p>
+                                    )}
+                                    {order.muDriverPlate && (
+                                      <p className="text-sm"><span className="text-muted-foreground">Placa:</span> {order.muDriverPlate}</p>
+                                    )}
+                                    {order.muTrackingUrl && (
+                                      <a href={order.muTrackingUrl} target="_blank" rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-sm text-primary hover:underline">
+                                        Ver tracking <ExternalLink className="h-3 w-3" />
+                                      </a>
+                                    )}
+                                    {order.scheduledDate && (
+                                      <p className="text-sm"><span className="text-muted-foreground">Programado:</span> {new Date(order.scheduledDate).toLocaleString('es-CO')}</p>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </td>
