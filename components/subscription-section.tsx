@@ -23,8 +23,41 @@ const HOW_IT_WORKS = [
   },
 ];
 
+const howToJsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'HowTo',
+  name: 'Cómo funciona la suscripción de café KPU',
+  description: 'Recibe café de especialidad colombiano fresco en tu puerta de forma automática con nuestros planes de suscripción.',
+  image: 'https://kpucafe.com/og-image.png',
+  step: [
+    {
+      '@type': 'HowToStep',
+      position: 1,
+      name: 'Elige tu café',
+      text: 'Selecciona tu café favorito, presentación y tipo de molido.',
+    },
+    {
+      '@type': 'HowToStep',
+      position: 2,
+      name: 'Cobro automático',
+      text: 'Tu tarjeta se cobra automáticamente según el plan elegido (mensual, bimestral o trimestral).',
+    },
+    {
+      '@type': 'HowToStep',
+      position: 3,
+      name: 'Recibe en casa',
+      text: 'Envío gratis directamente a la puerta de tu casa con café recién tostado.',
+    },
+  ],
+};
+
 export default function SubscriptionSection({ plans }: SubscriptionSectionProps) {
   return (
+    <>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(howToJsonLd) }}
+    />
     <section
       id="suscripciones"
       aria-label="Planes de suscripcion"
@@ -201,7 +234,7 @@ export default function SubscriptionSection({ plans }: SubscriptionSectionProps)
                   )}
                   <div className="flex items-baseline justify-center gap-1">
                     <span
-                      className="font-display font-bold"
+                      className="font-display"
                       style={{
                         fontSize: '2.5rem',
                         color: plan.isPopular ? 'white' : 'hsl(var(--secondary-foreground))',
@@ -275,5 +308,6 @@ export default function SubscriptionSection({ plans }: SubscriptionSectionProps)
         )}
       </div>
     </section>
+    </>
   );
 }

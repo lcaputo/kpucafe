@@ -129,7 +129,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         {hasVariants && (
           <div className="flex items-center gap-2.5 mb-4">
             <span className="text-xs text-muted-foreground font-medium">Tostado:</span>
-            <div className="flex gap-1" aria-label={`Nivel de tostado: ${ROAST_LABELS[product.roastLevel]}`}>
+            <div className="flex gap-1" role="img" aria-label={`Nivel de tostado: ${ROAST_LABELS[product.roastLevel]}`}>
               {[1, 2, 3, 4, 5].map((level) => (
                 <div
                   key={level}
@@ -164,7 +164,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                         allOut
                           ? 'border-border/50 text-muted-foreground/40 line-through cursor-not-allowed'
                           : selectedGrind === grind
-                          ? 'border-primary bg-primary text-primary-foreground shadow-warm'
+                          ? 'border-[hsl(14_82%_40%)] bg-[hsl(14_82%_40%)] text-white shadow-warm'
                           : 'border-border text-foreground hover:border-primary/60 hover:bg-primary/5'
                       }`}
                     >
@@ -192,7 +192,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                         weightOut
                           ? 'border-border/50 text-muted-foreground/40 line-through cursor-not-allowed'
                           : selectedWeight.value === weight.value
-                          ? 'border-primary bg-primary text-primary-foreground shadow-warm'
+                          ? 'border-[hsl(14_82%_40%)] bg-[hsl(14_82%_40%)] text-white shadow-warm'
                           : 'border-border text-foreground hover:border-primary/60 hover:bg-primary/5'
                       }`}
                     >
@@ -227,7 +227,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 ? 'bg-muted text-muted-foreground cursor-not-allowed'
                 : isAdded
                 ? 'bg-green-500 text-white scale-95'
-                : 'bg-primary text-primary-foreground hover:shadow-warm hover:scale-[1.04] active:scale-95'
+                : 'bg-[hsl(14_82%_40%)] text-white hover:shadow-warm hover:scale-[1.04] active:scale-95'
             }`}
           >
             {isOutOfStock ? (

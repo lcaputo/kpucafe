@@ -384,7 +384,7 @@ function SubscribeWizardInner() {
                 <p><span className="text-muted-foreground">Plan:</span> <span className="font-medium">{plan.name}</span></p>
                 <p><span className="text-muted-foreground">Café:</span> <span className="font-medium">{selectedProduct?.name}{selectedVariant ? ` · ${selectedVariant.weight} ${selectedVariant.grind}` : ''}</span></p>
                 <p><span className="text-muted-foreground">Frecuencia:</span> <span className="font-medium">{plan.frequencyLabel}</span></p>
-                <p><span className="text-muted-foreground">Monto por envío:</span> <span className="font-bold text-primary">${plan.price.toLocaleString('es-CO')} COP</span></p>
+                <p><span className="text-muted-foreground">Monto por envío:</span> <span className="text-primary">${plan.price.toLocaleString('es-CO')} COP</span></p>
               </div>
 
               {/* Saved methods */}

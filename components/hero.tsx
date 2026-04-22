@@ -78,7 +78,7 @@ export default function Hero() {
                 Ver productos
               </a>
               <a href="#suscripciones" className="btn-kpu-outline-light">
-                Suscribirse
+                Ver Suscripciones
               </a>
             </div>
 
@@ -106,6 +106,7 @@ export default function Hero() {
                   width={480}
                   height={480}
                   priority
+                  sizes="(max-width: 768px) 300px, (max-width: 1024px) 384px, 480px"
                   className="relative z-10 max-w-[300px] md:max-w-sm lg:max-w-md rounded-2xl object-cover"
                   style={{ boxShadow: '0 24px 64px hsl(0 0% 0% / 0.4)' }}
                 />

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Search, Loader2, Phone, MapPin } from 'lucide-react';
+import { Users, Search, Loader2 } from 'lucide-react';
 
 interface Profile {
   id: string;
@@ -31,66 +31,83 @@ export default function AdminCustomersPage() {
         city: p.city,
         created_at: p.createdAt,
       })));
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
     setLoading(false);
   };
 
-  const filteredProfiles = profiles.filter(profile =>
-    profile.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    profile.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    profile.phone?.includes(searchTerm)
+  const filtered = profiles.filter(p =>
+    p.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.phone?.includes(searchTerm)
   );
 
-  if (loading) {
-    return <div className="flex items-center justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-  }
+  if (loading) return (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    </div>
+  );
 
   return (
     <div>
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-        
-        <div className="relative w-full sm:w-64">
+      {/* Search */}
+      <div className="mb-6">
+        <div className="relative w-full sm:w-72">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input type="text" placeholder="Buscar cliente..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full" />
+          <input
+            type="text"
+            placeholder="Buscar por nombre, ciudad o teléfono..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="pl-10 pr-4 py-2 rounded-lg border border-input bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary w-full text-sm"
+          />
         </div>
       </div>
 
-      {filteredProfiles.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="text-center py-16 bg-card rounded-2xl">
           <Users className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-          <h3 className="font-display text-xl font-semibold text-foreground mb-2">No hay clientes</h3>
-          <p className="text-muted-foreground">
-            {searchTerm ? 'No se encontraron clientes con esa busqueda' : 'Los clientes apareceran aqui cuando se registren'}
+          <h3 className="font-display text-xl text-foreground mb-2">No hay clientes</h3>
+          <p className="text-muted-foreground text-sm">
+            {searchTerm ? 'Sin resultados para esa búsqueda' : 'Los clientes aparecerán aquí cuando se registren'}
           </p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredProfiles.map(profile => (
-            <div key={profile.id} className="bg-card rounded-xl p-6 shadow-soft">
-              <div className="flex items-center gap-4 mb-4">
-                <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">{profile.full_name || 'Sin nombre'}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Cliente desde {new Date(profile.created_at).toLocaleDateString('es-CO', { month: 'short', year: 'numeric' })}
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm">
-                {profile.phone && (
-                  <div className="flex items-center gap-2 text-muted-foreground"><Phone className="h-4 w-4" />{profile.phone}</div>
-                )}
-                {profile.city && (
-                  <div className="flex items-center gap-2 text-muted-foreground"><MapPin className="h-4 w-4" />{profile.city}</div>
-                )}
-              </div>
-            </div>
-          ))}
+        <div className="bg-card rounded-2xl shadow-soft overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground uppercase tracking-wide text-xs">#</th>
+                  <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground uppercase tracking-wide text-xs">Nombre</th>
+                  <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground uppercase tracking-wide text-xs">Teléfono</th>
+                  <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground uppercase tracking-wide text-xs">Ciudad</th>
+                  <th className="text-left px-5 py-3.5 font-semibold text-muted-foreground uppercase tracking-wide text-xs">Cliente desde</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered.map((profile, i) => (
+                  <tr key={profile.id} className="hover:bg-muted/20 transition-colors">
+                    <td className="px-5 py-3.5 text-xs text-muted-foreground">{i + 1}</td>
+                    <td className="px-5 py-3.5 font-medium text-foreground">
+                      {profile.full_name || <span className="text-muted-foreground italic">Sin nombre</span>}
+                    </td>
+                    <td className="px-5 py-3.5 text-muted-foreground">
+                      {profile.phone || '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-muted-foreground">
+                      {profile.city || '—'}
+                    </td>
+                    <td className="px-5 py-3.5 text-muted-foreground whitespace-nowrap">
+                      {new Date(profile.created_at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-5 py-3 border-t border-border text-xs text-muted-foreground">
+            {filtered.length} cliente{filtered.length !== 1 ? 's' : ''}
+          </div>
         </div>
       )}
     </div>

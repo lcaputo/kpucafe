@@ -27,6 +27,7 @@ const navItems = [
   { path: '/admin/pedidos', icon: Package, label: 'Pedidos' },
   { path: '/admin/clientes', icon: Users, label: 'Clientes' },
   { path: '/admin/envios', icon: Truck, label: 'Envios' },
+  { path: '/admin/configuracion/delivery', icon: Truck, label: 'Delivery MU' },
   { path: '/admin/suscripciones', icon: RefreshCw, label: 'Suscripciones' },
   { path: '/admin/planes', icon: CreditCard, label: 'Planes' },
   { path: '/admin/cupones', icon: Ticket, label: 'Cupones' },

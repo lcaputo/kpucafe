@@ -34,16 +34,27 @@ export const metadata: Metadata = {
     'suscripción café',
     'KPU café',
   ],
+  icons: {
+    icon: '/lovable-uploads/b5ca903b-190c-42d1-bc05-a7b7aa79b434.png',
+    apple: '/lovable-uploads/b5ca903b-190c-42d1-bc05-a7b7aa79b434.png',
+  },
   authors: [{ name: 'KPU Café' }],
   openGraph: {
     type: 'website',
     locale: 'es_CO',
     siteName: 'KPU Café',
-    images: [{ url: '/og-image.png', width: 1200, height: 630 }],
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'KPU Café — Café de Especialidad Colombiano' }],
   },
   twitter: {
     card: 'summary_large_image',
     site: '@kpucafe',
+    images: ['/og-image.png'],
+  },
+  alternates: {
+    languages: {
+      'es-CO': 'https://kpucafe.com',
+      'es': 'https://kpucafe.com',
+    },
   },
   robots: { index: true, follow: true },
 };
@@ -83,7 +94,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-primary focus:text-primary-foreground"

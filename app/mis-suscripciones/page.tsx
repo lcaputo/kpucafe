@@ -158,7 +158,7 @@ export default function MisSuscripciones() {
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="font-display text-2xl font-bold text-primary">${sub.price.toLocaleString('es-CO')}</p>
+                        <p className="font-display text-2xl text-primary">${sub.price.toLocaleString('es-CO')}</p>
                         <p className="text-xs text-muted-foreground">{FREQ_LABELS[sub.frequency] || sub.frequency}</p>
                       </div>
                     </div>

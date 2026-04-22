@@ -39,20 +39,20 @@ export default function Footer() {
           <div className="lg:col-span-1">
             <div className="flex items-center gap-3 mb-5">
               <Image
-                src="/assets/logo-kpu.png"
-                alt="KPU Cafe"
+                src="/lovable-uploads/b5ca903b-190c-42d1-bc05-a7b7aa79b434.png"
+                alt="KPU Cafe Colombiano"
                 width={52}
                 height={52}
                 className="rounded-full object-cover ring-2 ring-primary/20"
               />
               <div>
                 <span className="font-display text-2xl font-bold tracking-wide leading-none block">KPU</span>
-                <span className="text-primary text-xs font-semibold tracking-widest uppercase opacity-80">
+                <span className="text-xs font-semibold tracking-widest uppercase" style={{ color: 'hsl(14 82% 72%)' }}>
                   Cafe Colombiano
                 </span>
               </div>
             </div>
-            <p className="text-secondary-foreground/60 text-sm leading-relaxed">
+            <p className="text-secondary-foreground/75 text-sm leading-relaxed">
               Desde las montanas del sur de Colombia, llevamos el mejor cafe de especialidad
               directamente a tu taza. 100% Arabica, tostado con pasion.
             </p>
@@ -72,7 +72,7 @@ export default function Footer() {
                 <li key={label}>
                   <a
                     href={href}
-                    className="text-secondary-foreground/55 hover:text-primary transition-colors text-sm"
+                    className="text-secondary-foreground/70 hover:text-primary transition-colors text-sm"
                   >
                     {label}
                   </a>
@@ -88,7 +88,7 @@ export default function Footer() {
               <li>
                 <a
                   href="tel:+573243208547"
-                  className="flex items-center gap-3 text-secondary-foreground/55 hover:text-primary transition-colors group"
+                  className="flex items-center gap-3 text-secondary-foreground/70 hover:text-primary transition-colors group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-primary/12 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
                     <Phone className="h-4 w-4 text-primary" />
@@ -99,7 +99,7 @@ export default function Footer() {
               <li>
                 <a
                   href="mailto:contacto@kpucafe.com"
-                  className="flex items-center gap-3 text-secondary-foreground/55 hover:text-primary transition-colors group"
+                  className="flex items-center gap-3 text-secondary-foreground/70 hover:text-primary transition-colors group"
                 >
                   <div className="w-8 h-8 rounded-lg bg-primary/12 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
                     <Mail className="h-4 w-4 text-primary" />
@@ -111,7 +111,7 @@ export default function Footer() {
                 <div className="w-8 h-8 rounded-lg bg-primary/12 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <MapPin className="h-4 w-4 text-primary" />
                 </div>
-                <span className="text-secondary-foreground/55 text-sm">Barranquilla, Colombia</span>
+                <span className="text-secondary-foreground/70 text-sm">Barranquilla, Colombia</span>
               </li>
             </ul>
           </div>
@@ -148,12 +148,13 @@ export default function Footer() {
                 border: '1px solid hsl(0 0% 100% / 0.08)',
               }}
             >
-              <p className="text-secondary-foreground/60 text-xs mb-3 leading-relaxed">
+              <p className="text-secondary-foreground/75 text-xs mb-3 leading-relaxed">
                 Recibe novedades y ofertas exclusivas
               </p>
               <a
                 href="/auth"
-                className="inline-flex items-center gap-1.5 text-primary hover:text-primary/80 text-xs font-semibold transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold transition-colors hover:opacity-80"
+                style={{ color: 'hsl(14 82% 72%)' }}
               >
                 Crear cuenta gratis →
               </a>

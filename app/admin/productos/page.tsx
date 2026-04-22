@@ -52,6 +52,7 @@ export default function AdminProductsPage() {
   const [variantsProductId, setVariantsProductId] = useState<string | null>(null);
   const [variantsProductName, setVariantsProductName] = useState('');
   const [filterCategoryId, setFilterCategoryId] = useState<string | 'all'>('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -323,81 +324,121 @@ export default function AdminProductsPage() {
           <p className="text-muted-foreground text-sm">Agrega tu primer producto</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="bg-card rounded-2xl shadow-soft overflow-hidden">
           {filteredProducts.map((product, index) => {
             const productVariants = variants.filter(v => v.product_id === product.id);
             const categoryName = getCategoryName(product.category_id);
+            const isExpanded = expandedId === product.id;
+
             return (
-              <div key={product.id} className="bg-card rounded-xl shadow-soft p-4 flex items-center gap-4 group hover:shadow-md transition-shadow">
-                <div className="flex flex-col gap-1">
-                  <button onClick={() => moveProduct(index, 'up')} disabled={index === 0} className="p-1 text-muted-foreground hover:text-primary disabled:opacity-20 transition-colors"><ArrowUp className="h-4 w-4" /></button>
-                  <GripVertical className="h-4 w-4 text-muted-foreground/40 mx-auto" />
-                  <button onClick={() => moveProduct(index, 'down')} disabled={index === filteredProducts.length - 1} className="p-1 text-muted-foreground hover:text-primary disabled:opacity-20 transition-colors"><ArrowDown className="h-4 w-4" /></button>
+              <div key={product.id} className={`border-b border-border last:border-0 ${isExpanded ? 'bg-muted/20' : ''}`}>
+                {/* Row — clickable anywhere to expand */}
+                <div
+                  className="flex items-center gap-4 p-4 cursor-pointer hover:bg-muted/20 transition-colors"
+                  onClick={() => setExpandedId(isExpanded ? null : product.id)}
+                >
+                  {/* Reorder */}
+                  <div className="flex flex-col gap-0.5" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => moveProduct(index, 'up')} disabled={index === 0} className="p-1 text-muted-foreground hover:text-primary disabled:opacity-20 transition-colors"><ArrowUp className="h-3.5 w-3.5" /></button>
+                    <GripVertical className="h-3.5 w-3.5 text-muted-foreground/40 mx-auto" />
+                    <button onClick={() => moveProduct(index, 'down')} disabled={index === filteredProducts.length - 1} className="p-1 text-muted-foreground hover:text-primary disabled:opacity-20 transition-colors"><ArrowDown className="h-3.5 w-3.5" /></button>
+                  </div>
+
+                  {/* Image */}
+                  {product.image_url ? (
+                    <div className="relative w-12 h-12 flex-shrink-0">
+                      <NextImage src={product.image_url} alt={product.name} fill sizes="48px" className="rounded-lg object-cover" />
+                    </div>
+                  ) : (
+                    <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Coffee className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  )}
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-foreground truncate">{product.name}</p>
+                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${product.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {product.is_active ? 'Activo' : 'Inactivo'}
+                      </span>
+                      {categoryName && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                          <Tag className="h-3 w-3" />{categoryName}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                      {product.origin && <span>{product.origin}</span>}
+                      {product.origin && <span>·</span>}
+                      {product.has_variants
+                        ? <span>{productVariants.length} variantes</span>
+                        : <span>${product.base_price.toLocaleString('es-CO')} COP</span>}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
+                    <Switch
+                      checked={product.is_active}
+                      onCheckedChange={async (checked) => {
+                        try {
+                          await fetch(`/api/admin/products/${product.id}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ isActive: checked }),
+                          });
+                          setProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_active: checked } : p));
+                          toast({ title: checked ? 'Producto activado' : 'Producto desactivado' });
+                        } catch {
+                          toast({ title: 'Error al cambiar estado', variant: 'destructive' });
+                        }
+                      }}
+                    />
+                    {product.has_variants && (
+                      <button onClick={() => { setVariantsProductId(product.id); setVariantsProductName(product.name); }} className="p-2 text-muted-foreground hover:text-primary transition-colors" title="Variantes">
+                        <Package className="h-4 w-4" />
+                      </button>
+                    )}
+                    <button onClick={() => openModal(product)} className="p-2 text-muted-foreground hover:text-primary transition-colors"><Edit className="h-4 w-4" /></button>
+                    <button onClick={() => deleteProduct(product.id)} className="p-2 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
+                  </div>
                 </div>
 
-                {product.image_url ? (
-                  <div className="relative w-14 h-14 flex-shrink-0">
-                    <NextImage src={product.image_url} alt={product.name} fill sizes="56px" className="rounded-lg object-cover" />
-                  </div>
-                ) : (
-                  <div className="w-14 h-14 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Coffee className="h-6 w-6 text-muted-foreground" />
+                {/* Accordion panel */}
+                {isExpanded && (
+                  <div className="px-6 pb-5 pt-1 border-t border-border bg-background">
+                    <div className="grid sm:grid-cols-2 gap-4 mt-3 text-sm">
+                      {product.description && (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">Descripción</p>
+                          <p className="text-foreground leading-relaxed">{product.description}</p>
+                        </div>
+                      )}
+                      {product.has_variants && productVariants.length > 0 && (
+                        <div>
+                          <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">Variantes</p>
+                          <div className="space-y-1">
+                            {productVariants.map(v => (
+                              <div key={v.id} className="flex justify-between items-center bg-muted/50 rounded-lg px-3 py-1.5">
+                                <span className="text-foreground">{v.weight} · {v.grind}</span>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  <span>${v.price_modifier.toLocaleString('es-CO')}</span>
+                                  <span className={v.stock > 0 ? 'text-green-600' : 'text-red-500'}>
+                                    {v.stock > 0 ? `${v.stock} und.` : 'Agotado'}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {!product.description && !product.has_variants && (
+                        <p className="text-muted-foreground text-sm col-span-2">Sin detalles adicionales.</p>
+                      )}
+                    </div>
                   </div>
                 )}
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-foreground truncate">{product.name}</p>
-                    <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${product.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                      {product.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
-                    {categoryName && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                        <Tag className="h-3 w-3" />{categoryName}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                    {product.origin && <span>{product.origin}</span>}
-                    {product.origin && <span>&bull;</span>}
-                    {product.has_variants ? (
-                      <span>{productVariants.length} variantes</span>
-                    ) : (
-                      <span>${product.base_price.toLocaleString('es-CO')} COP</span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Switch
-                    checked={product.is_active}
-                    onCheckedChange={async (checked) => {
-                      try {
-                        await fetch(`/api/admin/products/${product.id}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ isActive: checked }),
-                        });
-                        setProducts(prev => prev.map(p => p.id === product.id ? { ...p, is_active: checked } : p));
-                        toast({ title: checked ? 'Producto activado' : 'Producto desactivado' });
-                      } catch {
-                        toast({ title: 'Error al cambiar estado', variant: 'destructive' });
-                      }
-                    }}
-                    title={product.is_active ? 'Desactivar' : 'Activar'}
-                  />
-                  {product.has_variants && (
-                    <button
-                      onClick={() => { setVariantsProductId(product.id); setVariantsProductName(product.name); }}
-                      className="p-2 text-muted-foreground hover:text-accent-foreground transition-colors"
-                      title="Variantes"
-                    >
-                      <Package className="h-4 w-4" />
-                    </button>
-                  )}
-                  <button onClick={() => openModal(product)} className="p-2 text-muted-foreground hover:text-primary transition-colors"><Edit className="h-4 w-4" /></button>
-                  <button onClick={() => deleteProduct(product.id)} className="p-2 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
-                </div>
               </div>
             );
           })}

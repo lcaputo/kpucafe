@@ -19,6 +19,8 @@
     /* Primary — KPU Orange/Red */
     --primary: 14 82% 53%;
     --primary-foreground: 0 0% 100%;
+    /* Accessible primary: darkened for WCAG AA contrast with white text (≥4.5:1) */
+    --primary-btn: 14 82% 40%;
 
     /* Secondary — Rich coffee brown */
     --secondary: 20 35% 20%;
@@ -117,6 +119,17 @@
 @layer base {
   * {
     @apply border-border;
+  }
+
+  /* Global focus style — thin offset ring in brand color */
+  *:focus {
+    outline: none;
+  }
+
+  *:focus-visible {
+    outline: 2px solid hsl(14 82% 53% / 0.7);
+    outline-offset: 3px;
+    border-radius: 6px;
   }
 
   section {
@@ -233,7 +246,7 @@
   /* ── Buttons ────────────────────────────────────── */
   .btn-kpu {
     @apply inline-flex items-center justify-center gap-2 font-semibold px-8 py-3.5 rounded-full transition-all duration-300 cursor-pointer;
-    background: var(--gradient-warm);
+    background: linear-gradient(135deg, hsl(14 82% 40%) 0%, hsl(38 75% 38%) 100%);
     color: hsl(0 0% 100%);
     box-shadow: var(--shadow-warm);
     min-height: 48px;
@@ -254,7 +267,7 @@
 
   .btn-kpu-gold {
     @apply inline-flex items-center justify-center gap-2 font-semibold px-8 py-3.5 rounded-full transition-all duration-300 cursor-pointer;
-    background: var(--gradient-gold);
+    background: linear-gradient(135deg, hsl(38 80% 38%) 0%, hsl(32 72% 32%) 100%);
     color: hsl(0 0% 100%);
     box-shadow: var(--shadow-gold);
     min-height: 48px;

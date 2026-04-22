@@ -34,8 +34,8 @@ export default function Header() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-secondary/90 backdrop-blur-xl border-b border-secondary-foreground/10 shadow-[0_2px_24px_hsl(15_45%_10%/0.4)]'
-          : 'bg-secondary/75 backdrop-blur-lg border-b border-secondary-foreground/8'
+          ? 'bg-secondary/98 backdrop-blur-xl border-b border-secondary-foreground/10 shadow-[0_2px_24px_hsl(15_45%_10%/0.4)]'
+          : 'bg-secondary/90 backdrop-blur-lg border-b border-secondary-foreground/8'
       }`}
     >
       <div className="container mx-auto px-4 py-3.5">
@@ -54,7 +54,7 @@ export default function Header() {
             </div>
             <div className="hidden sm:block">
               <span className="text-secondary-foreground font-display text-2xl tracking-wide leading-none">KPU</span>
-              <span className="text-primary font-sans text-xs font-semibold block tracking-widest uppercase opacity-80">
+              <span className="font-sans text-xs font-bold block tracking-widest uppercase" style={{ color: 'hsl(14 82% 72%)' }}>
                 Cafe Colombiano
               </span>
             </div>
@@ -96,11 +96,11 @@ export default function Header() {
                 {isUserMenuOpen && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsUserMenuOpen(false)} />
-                    <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-border/60 py-2 z-50 shadow-elevated overflow-hidden glass">
+                    <div className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-border py-2 z-50 shadow-elevated overflow-hidden bg-card">
                       <Link
                         href="/mis-pedidos"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-foreground hover:bg-muted/70 transition-colors text-sm"
+                        className="flex items-center gap-3 px-4 py-2.5 text-foreground hover:bg-muted/70 focus-visible:bg-muted/70 focus-visible:outline-none transition-colors text-sm"
                       >
                         <Package className="h-4 w-4 text-muted-foreground" />
                         Mis Pedidos
@@ -108,7 +108,7 @@ export default function Header() {
                       <Link
                         href="/mis-suscripciones"
                         onClick={() => setIsUserMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2.5 text-foreground hover:bg-muted/70 transition-colors text-sm"
+                        className="flex items-center gap-3 px-4 py-2.5 text-foreground hover:bg-muted/70 focus-visible:bg-muted/70 focus-visible:outline-none transition-colors text-sm"
                       >
                         <RefreshCw className="h-4 w-4 text-muted-foreground" />
                         Mis Suscripciones
@@ -117,7 +117,7 @@ export default function Header() {
                         <Link
                           href="/admin"
                           onClick={() => setIsUserMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-primary hover:bg-muted/70 transition-colors text-sm font-medium"
+                          className="flex items-center gap-3 px-4 py-2.5 text-primary hover:bg-muted/70 focus-visible:bg-muted/70 focus-visible:outline-none transition-colors text-sm font-medium"
                         >
                           <Settings className="h-4 w-4" />
                           Panel Admin
@@ -126,7 +126,7 @@ export default function Header() {
                       <hr className="my-1.5 border-border/60" />
                       <button
                         onClick={handleSignOut}
-                        className="flex items-center gap-3 px-4 py-2.5 text-destructive hover:bg-muted/70 transition-colors w-full text-sm cursor-pointer"
+                        className="flex items-center gap-3 px-4 py-2.5 text-destructive hover:bg-muted/70 focus-visible:bg-muted/70 focus-visible:outline-none transition-colors w-full text-sm cursor-pointer"
                       >
                         <LogOut className="h-4 w-4" />
                         Cerrar Sesion
@@ -152,7 +152,7 @@ export default function Header() {
             >
               <ShoppingBag className="h-5 w-5" />
               {mounted && totalItems > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-primary text-primary-foreground text-[11px] font-bold h-5 w-5 rounded-full flex items-center justify-center leading-none">
+                <span className="absolute -top-0.5 -right-0.5 bg-[hsl(14_82%_40%)] text-white text-[11px] font-bold h-5 w-5 rounded-full flex items-center justify-center leading-none">
                   {totalItems > 9 ? '9+' : totalItems}
                 </span>
               )}

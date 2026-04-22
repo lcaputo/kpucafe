@@ -82,7 +82,7 @@ export default function ProductsSection({ products, categories }: ProductsSectio
             style={{
               background: 'hsl(var(--primary) / 0.12)',
               border: '1px solid hsl(var(--primary) / 0.22)',
-              color: 'hsl(var(--primary))',
+              color: 'hsl(14 82% 40%)',
             }}
           >
             <Sparkles className="h-3.5 w-3.5" />
@@ -107,8 +107,8 @@ export default function ProductsSection({ products, categories }: ProductsSectio
               onClick={() => setActiveCategoryId('all')}
               className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200 cursor-pointer min-h-[44px] ${
                 effectiveTab === 'all'
-                  ? 'bg-primary text-primary-foreground border-primary shadow-warm'
-                  : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground bg-background'
+                  ? 'bg-[hsl(14_82%_40%)] text-white border-[hsl(14_82%_40%)] shadow-warm'
+                  : 'border-border text-foreground hover:border-primary/50 bg-background'
               }`}
             >
               Todo
@@ -119,8 +119,8 @@ export default function ProductsSection({ products, categories }: ProductsSectio
                 onClick={() => setActiveCategoryId(cat.id)}
                 className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200 cursor-pointer min-h-[44px] ${
                   effectiveTab === cat.id
-                    ? 'bg-primary text-primary-foreground border-primary shadow-warm'
-                    : 'border-border text-muted-foreground hover:border-primary/50 hover:text-foreground bg-background'
+                    ? 'bg-[hsl(14_82%_40%)] text-white border-[hsl(14_82%_40%)] shadow-warm'
+                    : 'border-border text-foreground hover:border-primary/50 bg-background'
                 }`}
               >
                 {cat.icon && <span>{cat.icon}</span>}

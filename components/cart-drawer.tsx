@@ -38,7 +38,7 @@ function AccountPromptModal({
               onClose();
               router.push('/auth');
             }}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[hsl(14_82%_40%)] text-white rounded-xl font-semibold hover:bg-[hsl(14_82%_35%)] transition-colors"
           >
             <LogIn className="h-5 w-5" />
             Iniciar sesion
@@ -148,7 +148,7 @@ export default function CartDrawer() {
                       <p className="text-sm text-muted-foreground">
                         {item.weight} &bull; {item.grind}
                       </p>
-                      <p className="text-primary font-semibold mt-1">
+                      <p className="text-primary mt-1">
                         ${item.price.toLocaleString('es-CO')}
                       </p>
 
@@ -185,7 +185,7 @@ export default function CartDrawer() {
             <div className="border-t border-border p-6 space-y-4">
               <div className="flex items-center justify-between text-lg">
                 <span className="text-muted-foreground">Total:</span>
-                <span className="font-display text-2xl font-bold text-foreground">
+                <span className="font-display text-2xl text-foreground">
                   ${totalPrice.toLocaleString('es-CO')} COP
                 </span>
               </div>
