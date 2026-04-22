@@ -1,7 +1,8 @@
 import { prisma } from '@/lib/prisma';
 import { muCreateService, MU_CITY_IDS } from '@/lib/mensajeros-urbanos';
-import { sendOrderPreparingEmail } from '@/lib/email';
+import { sendOrderPreparingEmail, sendEnviaShippedEmail } from '@/lib/email';
 import { log } from '@/lib/logger';
+import { enviaGenerate, enviaPickup } from '@/lib/envia';
 
 export async function triggerMuDeliveryIfNeeded(orderId: string): Promise<void> {
   const order = await prisma.order.findUnique({
@@ -85,5 +86,133 @@ export async function triggerMuDeliveryIfNeeded(orderId: string): Promise<void> 
   } catch (err: any) {
     await prisma.order.update({ where: { id: orderId }, data: { muStatus: 'error' } });
     log({ level: 'error', type: 'delivery', action: 'mu_create_failed', message: `Failed to create MU service for order ${orderId}`, error: err.message });
+  }
+}
+
+export async function triggerEnviaDeliveryIfNeeded(orderId: string): Promise<void> {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { items: { include: { product: true } }, user: true },
+  });
+
+  if (!order || order.deliveryMethod !== 'envia') return;
+
+  const settings = await prisma.deliverySettings.findFirst({
+    where: { provider: 'envia', enabled: true },
+  });
+  if (!settings || !settings.enviaApiToken) {
+    await prisma.order.update({ where: { id: orderId }, data: { muStatus: 'error' } });
+    log({ level: 'error', type: 'delivery', action: 'envia_not_configured', message: `Envia not configured`, metadata: { orderId } });
+    return;
+  }
+
+  try {
+    let totalWeight = 0;
+    let maxLength = 0;
+    let maxWidth = 0;
+    let maxHeight = 0;
+
+    for (const item of order.items) {
+      const qty = item.quantity;
+      const w = item.product?.shippingWeight || settings.defaultWeight || 0.5;
+      const l = item.product?.shippingLength || settings.defaultLength || 20;
+      const wd = item.product?.shippingWidth || settings.defaultWidth || 15;
+      const h = item.product?.shippingHeight || settings.defaultHeight || 10;
+      totalWeight += w * qty;
+      maxLength = Math.max(maxLength, l);
+      maxWidth = Math.max(maxWidth, wd);
+      maxHeight = Math.max(maxHeight, h);
+    }
+
+    const origin = {
+      name: settings.pickupStoreName || 'KPU Cafe',
+      phone: settings.pickupPhone,
+      street: settings.pickupAddress,
+      city: settings.pickupCity,
+      state: 'AT',
+      country: 'CO',
+      postalCode: '080001',
+    };
+
+    const destination = {
+      name: order.shippingName,
+      phone: order.shippingPhone,
+      street: order.shippingAddress,
+      city: order.shippingCity,
+      state: order.shippingDepartment || '',
+      country: 'CO',
+      postalCode: order.shippingPostalCode || '',
+    };
+
+    const carrier = order.enviaCarrier || 'coordinadora';
+    const service = order.enviaService || 'ground';
+
+    const result = await enviaGenerate({
+      apiToken: settings.enviaApiToken,
+      carrier,
+      service,
+      origin,
+      destination,
+      packages: [{
+        content: 'Cafe especializado KPU',
+        weight: totalWeight,
+        length: maxLength,
+        width: maxWidth,
+        height: maxHeight,
+        declaredValue: order.total,
+      }],
+      orderReference: order.id,
+    });
+
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        enviaShipmentId: result.shipmentId,
+        trackingNumber: result.trackingNumber,
+        carrier: result.carrier,
+        enviaLabelUrl: result.labelUrl,
+        muTrackingUrl: result.trackUrl,
+        muStatus: 'label_generated',
+        status: 'preparing',
+      },
+    });
+
+    log({ level: 'info', type: 'delivery', action: 'envia_label_generated', message: `Envia label generated for order ${orderId}`, metadata: { trackingNumber: result.trackingNumber, shipmentId: result.shipmentId } });
+
+    // Schedule pickup
+    try {
+      const now = new Date();
+      const pickupDate = now.toISOString().split('T')[0];
+
+      await enviaPickup({
+        apiToken: settings.enviaApiToken,
+        carrier,
+        pickupDate,
+        pickupTimeStart: settings.enviaPickupStart || '09:00',
+        pickupTimeEnd: settings.enviaPickupEnd || '17:00',
+        pickupAddress: origin,
+        trackingNumbers: [result.trackingNumber],
+      });
+
+      log({ level: 'info', type: 'delivery', action: 'envia_pickup_scheduled', message: `Pickup scheduled for order ${orderId}` });
+    } catch (pickupErr: any) {
+      log({ level: 'warn', type: 'delivery', action: 'envia_pickup_failed', message: `Pickup scheduling failed for order ${orderId}`, error: pickupErr.message });
+    }
+
+    // Send email
+    if (order.user?.email) {
+      sendEnviaShippedEmail({
+        to: order.user.email,
+        orderId: order.id,
+        customerName: order.shippingName,
+        carrier: result.carrier,
+        trackingNumber: result.trackingNumber,
+        trackUrl: result.trackUrl,
+        deliveryEstimate: order.enviaDeliveryEstimate || '3-5 dias',
+      }).catch(() => {});
+    }
+  } catch (err: any) {
+    await prisma.order.update({ where: { id: orderId }, data: { muStatus: 'error' } });
+    log({ level: 'error', type: 'delivery', action: 'envia_create_failed', message: `Failed to create Envia shipment for order ${orderId}`, error: err.message });
   }
 }
