@@ -1,7 +1,12 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM_EMAIL = 'KPU Cafe <noreply@kpucafe.com>';
+
+async function send(options: Parameters<Resend['emails']['send']>[0]) {
+  if (!resend) return;
+  await send(options);
+}
 
 // Helper: Format order ID as first 8 chars uppercase
 const formatOrderId = (orderId: string): string => orderId.slice(0, 8).toUpperCase();
@@ -81,7 +86,7 @@ export async function sendOrderPreparingEmail(data: {
     ${emailFooter()}
   `;
 
-  await resend.emails.send({
+  await send({
     from: FROM_EMAIL,
     to: data.to,
     subject: `Tu pedido #${formatOrderId(data.orderId)} esta en preparacion`,
@@ -122,7 +127,7 @@ export async function sendDriverAssignedEmail(data: {
     ${emailFooter()}
   `;
 
-  await resend.emails.send({
+  await send({
     from: FROM_EMAIL,
     to: data.to,
     subject: `Un mensajero recogera tu pedido #${formatOrderId(data.orderId)}`,
@@ -149,7 +154,7 @@ export async function sendOrderPickingUpEmail(data: {
     ${emailFooter()}
   `;
 
-  await resend.emails.send({
+  await send({
     from: FROM_EMAIL,
     to: data.to,
     subject: `Tu pedido #${formatOrderId(data.orderId)} esta siendo recogido`,
@@ -188,7 +193,7 @@ export async function sendOrderOnTheWayEmail(data: {
     ${emailFooter()}
   `;
 
-  await resend.emails.send({
+  await send({
     from: FROM_EMAIL,
     to: data.to,
     subject: `Tu pedido #${formatOrderId(data.orderId)} va en camino`,
@@ -216,7 +221,7 @@ export async function sendOrderDeliveredEmail(data: {
     ${emailFooter()}
   `;
 
-  await resend.emails.send({
+  await send({
     from: FROM_EMAIL,
     to: data.to,
     subject: `Tu pedido #${formatOrderId(data.orderId)} fue entregado`,
