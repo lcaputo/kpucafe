@@ -27,6 +27,10 @@ interface Product {
   sort_order: number;
   category_id: string | null;
   has_variants: boolean;
+  shipping_weight: number | null;
+  shipping_length: number | null;
+  shipping_width: number | null;
+  shipping_height: number | null;
 }
 
 interface ProductVariant {
@@ -63,6 +67,10 @@ export default function AdminProductsPage() {
     category_id: '' as string,
     has_variants: true,
     base_price: 0,
+    shipping_weight: 0,
+    shipping_length: 0,
+    shipping_width: 0,
+    shipping_height: 0,
   });
 
   useEffect(() => { fetchAll(); }, []);
@@ -88,6 +96,10 @@ export default function AdminProductsPage() {
         sort_order: p.sortOrder ?? 0,
         category_id: p.categoryId,
         has_variants: p.hasVariants,
+        shipping_weight: p.shippingWeight,
+        shipping_length: p.shippingLength,
+        shipping_width: p.shippingWidth,
+        shipping_height: p.shippingHeight,
       }));
       const mappedCategories = (categoriesData as any[]).map((c: any) => ({
         id: c.id,
@@ -193,6 +205,10 @@ export default function AdminProductsPage() {
       categoryId: formData.category_id || null,
       hasVariants: formData.has_variants,
       basePrice: formData.has_variants ? 0 : formData.base_price,
+      shippingWeight: formData.shipping_weight || null,
+      shippingLength: formData.shipping_length || null,
+      shippingWidth: formData.shipping_width || null,
+      shippingHeight: formData.shipping_height || null,
     };
 
     try {
@@ -258,11 +274,15 @@ export default function AdminProductsPage() {
         category_id: product.category_id || '',
         has_variants: product.has_variants,
         base_price: product.base_price || 0,
+        shipping_weight: product.shipping_weight || 0,
+        shipping_length: product.shipping_length || 0,
+        shipping_width: product.shipping_width || 0,
+        shipping_height: product.shipping_height || 0,
       });
       setImagePreview(product.image_url || null);
     } else {
       setEditingProduct(null);
-      setFormData({ name: '', description: '', image_url: '', origin: '', roast_level: 3, category_id: '', has_variants: true, base_price: 0 });
+      setFormData({ name: '', description: '', image_url: '', origin: '', roast_level: 3, category_id: '', has_variants: true, base_price: 0, shipping_weight: 0, shipping_length: 0, shipping_width: 0, shipping_height: 0 });
       setImagePreview(null);
     }
     setIsModalOpen(true);
@@ -543,6 +563,43 @@ export default function AdminProductsPage() {
                     <div className="flex justify-between text-xs text-muted-foreground mt-1"><span>Suave</span><span>Medio</span><span>Fuerte</span></div>
                   </div>
                 )}
+
+                {/* Shipping Dimensions */}
+                <div className="border-t pt-4 mt-4">
+                  <label className="text-sm font-medium text-foreground mb-3 block flex items-center gap-2">
+                    <Package className="h-4 w-4" />Dimensiones de envio (opcional)
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Peso (kg)</label>
+                      <input type="number" step="0.1" min="0"
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
+                        value={formData.shipping_weight || ''}
+                        onChange={(e) => setFormData({ ...formData, shipping_weight: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Largo (cm)</label>
+                      <input type="number" step="1" min="0"
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
+                        value={formData.shipping_length || ''}
+                        onChange={(e) => setFormData({ ...formData, shipping_length: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Ancho (cm)</label>
+                      <input type="number" step="1" min="0"
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
+                        value={formData.shipping_width || ''}
+                        onChange={(e) => setFormData({ ...formData, shipping_width: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Alto (cm)</label>
+                      <input type="number" step="1" min="0"
+                        className="w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm"
+                        value={formData.shipping_height || ''}
+                        onChange={(e) => setFormData({ ...formData, shipping_height: parseFloat(e.target.value) || 0 })} />
+                    </div>
+                  </div>
+                </div>
               </form>
             </div>
 

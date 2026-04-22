@@ -24,6 +24,10 @@ export async function PATCH(
         hasVariants: data.hasVariants,
         sortOrder: data.sortOrder,
         isActive: data.isActive,
+        shippingWeight: data.shippingWeight ?? null,
+        shippingLength: data.shippingLength ?? null,
+        shippingWidth: data.shippingWidth ?? null,
+        shippingHeight: data.shippingHeight ?? null,
       },
       include: { variants: true },
     });

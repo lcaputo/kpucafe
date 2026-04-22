@@ -35,6 +35,10 @@ export async function POST(req: Request) {
         categoryId: data.categoryId,
         hasVariants: data.hasVariants ?? true,
         sortOrder: data.sortOrder ?? 0,
+        shippingWeight: data.shippingWeight ?? null,
+        shippingLength: data.shippingLength ?? null,
+        shippingWidth: data.shippingWidth ?? null,
+        shippingHeight: data.shippingHeight ?? null,
       },
       include: { variants: true },
     });
