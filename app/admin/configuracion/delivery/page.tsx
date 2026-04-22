@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Plus, Trash2, Save, Loader2, ExternalLink, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Settings, Plus, Trash2, Save, Loader2, ExternalLink, ToggleLeft, ToggleRight, Package } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface TimeSlot {
@@ -44,12 +44,49 @@ const DEFAULT_CONFIG: DeliveryConfig = {
   availableDays: 7,
 };
 
+interface EnviaConfig {
+  city: string;
+  provider: string;
+  enabled: boolean;
+  pickupAddress: string;
+  pickupCity: string;
+  pickupPhone: string;
+  pickupStoreName: string;
+  enviaApiToken: string;
+  enviaCarriers: string[];
+  enviaPickupStart: string;
+  enviaPickupEnd: string;
+  defaultWeight: number;
+  defaultLength: number;
+  defaultWidth: number;
+  defaultHeight: number;
+}
+
+const DEFAULT_ENVIA: EnviaConfig = {
+  city: '__national__',
+  provider: 'envia',
+  enabled: false,
+  pickupAddress: '',
+  pickupCity: '',
+  pickupPhone: '',
+  pickupStoreName: '',
+  enviaApiToken: '',
+  enviaCarriers: ['coordinadora', 'deprisa'],
+  enviaPickupStart: '09:00',
+  enviaPickupEnd: '17:00',
+  defaultWeight: 0.5,
+  defaultLength: 20,
+  defaultWidth: 15,
+  defaultHeight: 10,
+};
+
 const INPUT_CLASS =
   'w-full px-3 py-2 rounded-lg border border-input bg-background text-foreground text-sm focus:ring-2 focus:ring-primary focus:border-transparent focus:outline-none';
 
 export default function AdminDeliveryConfigPage() {
   const { toast } = useToast();
   const [config, setConfig] = useState<DeliveryConfig>(DEFAULT_CONFIG);
+  const [enviaConfig, setEnviaConfig] = useState<EnviaConfig>(DEFAULT_ENVIA);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [registering, setRegistering] = useState(false);
@@ -78,6 +115,28 @@ export default function AdminDeliveryConfigPage() {
                                 : DEFAULT_TIME_SLOTS,
             availableDays:    item.availableDays    ?? 7,
           });
+
+          // Also check for Envia settings
+          const enviaSettings = data.find((s: any) => s.provider === 'envia');
+          if (enviaSettings) {
+            setEnviaConfig({
+              city: enviaSettings.city,
+              provider: 'envia',
+              enabled: enviaSettings.enabled,
+              pickupAddress: enviaSettings.pickupAddress,
+              pickupCity: enviaSettings.pickupCity,
+              pickupPhone: enviaSettings.pickupPhone,
+              pickupStoreName: enviaSettings.pickupStoreName || '',
+              enviaApiToken: enviaSettings.enviaApiToken || '',
+              enviaCarriers: enviaSettings.enviaCarriers || ['coordinadora', 'deprisa'],
+              enviaPickupStart: enviaSettings.enviaPickupStart || '09:00',
+              enviaPickupEnd: enviaSettings.enviaPickupEnd || '17:00',
+              defaultWeight: enviaSettings.defaultWeight || 0.5,
+              defaultLength: enviaSettings.defaultLength || 20,
+              defaultWidth: enviaSettings.defaultWidth || 15,
+              defaultHeight: enviaSettings.defaultHeight || 10,
+            });
+          }
         }
       }
     } catch {
@@ -99,6 +158,29 @@ export default function AdminDeliveryConfigPage() {
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? 'Error al guardar'); }
       toast({ title: 'Configuracion guardada' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    }
+    setSaving(false);
+  };
+
+  const handleSaveEnvia = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/delivery-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...enviaConfig,
+          pickupStoreId: '',
+          muAccessToken: '',
+          muWebhookToken: '',
+          timeSlots: [],
+          availableDays: 7,
+        }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message); }
+      toast({ title: 'Configuracion Envia guardada' });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
     }
@@ -392,6 +474,236 @@ export default function AdminDeliveryConfigPage() {
             ? <Loader2 className="h-4 w-4 animate-spin" />
             : <Save className="h-4 w-4" />}
           Guardar configuracion
+        </button>
+      </div>
+
+      {/* Separator */}
+      <div className="border-t border-border my-8" />
+
+      {/* Envia.com Section */}
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl font-bold text-foreground flex items-center gap-2">
+          <Package className="h-6 w-6 text-green-600" />
+          Envia.com — Envios Nacionales
+        </h2>
+        <button
+          onClick={() => setEnviaConfig((c) => ({ ...c, enabled: !c.enabled }))}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${enviaConfig.enabled ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}
+        >
+          {enviaConfig.enabled ? <ToggleRight className="h-5 w-5" /> : <ToggleLeft className="h-5 w-5" />}
+          {enviaConfig.enabled ? 'Activo' : 'Desactivado'}
+        </button>
+      </div>
+
+      {/* Envia API Token */}
+      <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
+        <h3 className="font-display text-base font-semibold text-foreground flex items-center gap-2">
+          <ExternalLink className="h-4 w-4 text-primary" />
+          Credenciales Envia
+        </h3>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">
+            API Token de Envia
+          </label>
+          <input
+            type="password"
+            value={enviaConfig.enviaApiToken}
+            onChange={e => setEnviaConfig(c => ({ ...c, enviaApiToken: e.target.value }))}
+            placeholder="Token de acceso de Envia.com"
+            className={INPUT_CLASS}
+            autoComplete="new-password"
+          />
+        </div>
+      </div>
+
+      {/* Envia Carriers */}
+      <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
+        <h3 className="font-display text-base font-semibold text-foreground">
+          Transportadoras
+        </h3>
+        <div className="flex items-center gap-6">
+          {(['coordinadora', 'deprisa'] as const).map(carrier => (
+            <label key={carrier} className="flex items-center gap-2 text-sm font-medium text-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={enviaConfig.enviaCarriers.includes(carrier)}
+                onChange={e => {
+                  setEnviaConfig(c => ({
+                    ...c,
+                    enviaCarriers: e.target.checked
+                      ? [...c.enviaCarriers, carrier]
+                      : c.enviaCarriers.filter(x => x !== carrier),
+                  }));
+                }}
+                className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+              />
+              {carrier.charAt(0).toUpperCase() + carrier.slice(1)}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Envia Pickup Address */}
+      <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
+        <h3 className="font-display text-base font-semibold text-foreground">
+          Punto de Recoleccion
+        </h3>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">
+            Nombre del punto
+          </label>
+          <input
+            type="text"
+            value={enviaConfig.pickupStoreName}
+            onChange={e => setEnviaConfig(c => ({ ...c, pickupStoreName: e.target.value }))}
+            placeholder="Ej: KPU Cafe"
+            className={INPUT_CLASS}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">
+            Direccion de recoleccion
+          </label>
+          <input
+            type="text"
+            value={enviaConfig.pickupAddress}
+            onChange={e => setEnviaConfig(c => ({ ...c, pickupAddress: e.target.value }))}
+            placeholder="Ej: Calle 72 #53-43"
+            className={INPUT_CLASS}
+          />
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Ciudad de recoleccion
+            </label>
+            <input
+              type="text"
+              value={enviaConfig.pickupCity}
+              onChange={e => setEnviaConfig(c => ({ ...c, pickupCity: e.target.value }))}
+              placeholder="Ej: Barranquilla"
+              className={INPUT_CLASS}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Telefono del punto
+            </label>
+            <input
+              type="tel"
+              value={enviaConfig.pickupPhone}
+              onChange={e => setEnviaConfig(c => ({ ...c, pickupPhone: e.target.value }))}
+              placeholder="Ej: 3001234567"
+              className={INPUT_CLASS}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Envia Pickup Window */}
+      <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
+        <h3 className="font-display text-base font-semibold text-foreground">
+          Ventana de Recoleccion
+        </h3>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Hora de inicio
+            </label>
+            <input
+              type="time"
+              value={enviaConfig.enviaPickupStart}
+              onChange={e => setEnviaConfig(c => ({ ...c, enviaPickupStart: e.target.value }))}
+              className={INPUT_CLASS}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Hora de fin
+            </label>
+            <input
+              type="time"
+              value={enviaConfig.enviaPickupEnd}
+              onChange={e => setEnviaConfig(c => ({ ...c, enviaPickupEnd: e.target.value }))}
+              className={INPUT_CLASS}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Envia Package Fallback */}
+      <div className="bg-card rounded-xl p-6 shadow-soft space-y-4">
+        <h3 className="font-display text-base font-semibold text-foreground">
+          Dimensiones por Defecto del Paquete
+        </h3>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Peso (kg)
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={0.1}
+              value={enviaConfig.defaultWeight}
+              onChange={e => setEnviaConfig(c => ({ ...c, defaultWeight: Number(e.target.value) }))}
+              className={INPUT_CLASS}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Largo (cm)
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={enviaConfig.defaultLength}
+              onChange={e => setEnviaConfig(c => ({ ...c, defaultLength: Number(e.target.value) }))}
+              className={INPUT_CLASS}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Ancho (cm)
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={enviaConfig.defaultWidth}
+              onChange={e => setEnviaConfig(c => ({ ...c, defaultWidth: Number(e.target.value) }))}
+              className={INPUT_CLASS}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              Alto (cm)
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={enviaConfig.defaultHeight}
+              onChange={e => setEnviaConfig(c => ({ ...c, defaultHeight: Number(e.target.value) }))}
+              className={INPUT_CLASS}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Save Envia */}
+      <div className="flex justify-end pb-4">
+        <button
+          onClick={handleSaveEnvia}
+          disabled={saving}
+          className="inline-flex items-center gap-2 px-6 py-2.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+        >
+          {saving
+            ? <Loader2 className="h-4 w-4 animate-spin" />
+            : <Save className="h-4 w-4" />}
+          Guardar configuracion Envia
         </button>
       </div>
 
