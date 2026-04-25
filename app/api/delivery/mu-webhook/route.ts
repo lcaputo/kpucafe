@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getMuConfig } from '@/lib/delivery-config';
 import { log } from '@/lib/logger';
 import {
   sendDriverAssignedEmail,
@@ -12,11 +13,9 @@ export async function POST(req: Request) {
   try {
     const webhookToken = req.headers.get('x-api-key');
 
-    // Validate webhook token against any delivery_settings entry
-    const settings = await prisma.deliverySettings.findFirst({
-      where: { muWebhookToken: webhookToken || '' },
-    });
-    if (!settings) {
+    // Validate webhook token against env config
+    const muConfig = getMuConfig();
+    if (!webhookToken || webhookToken !== muConfig.webhookToken) {
       return NextResponse.json({ message: 'Invalid webhook token' }, { status: 401 });
     }
 

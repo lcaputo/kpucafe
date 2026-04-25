@@ -3,6 +3,7 @@ import { muCreateService, MU_CITY_IDS } from '@/lib/mensajeros-urbanos';
 import { sendOrderPreparingEmail, sendEnviaShippedEmail } from '@/lib/email';
 import { log } from '@/lib/logger';
 import { enviaGenerate, enviaPickup } from '@/lib/envia';
+import { getMuConfig, getEnviaConfig } from '@/lib/delivery-config';
 
 export async function triggerMuDeliveryIfNeeded(orderId: string): Promise<void> {
   const order = await prisma.order.findUnique({
@@ -19,8 +20,8 @@ export async function triggerMuDeliveryIfNeeded(orderId: string): Promise<void> 
     return;
   }
 
-  const settings = await prisma.deliverySettings.findFirst({ where: { city: order.shippingCity, provider: 'mensajeros_urbanos' } });
-  if (!settings || !settings.enabled) {
+  const muConfig = getMuConfig();
+  if (!muConfig.enabled) {
     await prisma.order.update({ where: { id: orderId }, data: { muStatus: 'error' } });
     log({ level: 'error', type: 'delivery', action: 'mu_not_enabled', message: `MU not enabled for ${order.shippingCity}`, metadata: { orderId } });
     return;
@@ -33,12 +34,12 @@ export async function triggerMuDeliveryIfNeeded(orderId: string): Promise<void> 
     const timeStr = startDate.toTimeString().split(' ')[0];
 
     const result = await muCreateService({
-      accessToken: settings.muAccessToken,
+      accessToken: muConfig.accessToken,
       cityId,
       declaredValue: order.total,
       startDate: dateStr,
       startTime: timeStr,
-      storeId: settings.pickupStoreId,
+      storeId: muConfig.pickupStoreId,
       destination: {
         address: order.shippingAddress,
         orderId: order.id.slice(0, 20),
@@ -51,7 +52,7 @@ export async function triggerMuDeliveryIfNeeded(orderId: string): Promise<void> 
         domicileValue: String(order.shippingCost || 0),
       },
       products: order.items.map((item) => ({
-        storeId: settings.pickupStoreId,
+        storeId: muConfig.pickupStoreId,
         productName: item.productName,
         quantity: item.quantity,
         value: item.unitPrice,
@@ -97,10 +98,8 @@ export async function triggerEnviaDeliveryIfNeeded(orderId: string): Promise<voi
 
   if (!order || order.deliveryMethod !== 'envia') return;
 
-  const settings = await prisma.deliverySettings.findFirst({
-    where: { provider: 'envia', enabled: true },
-  });
-  if (!settings || !settings.enviaApiToken) {
+  const enviaConfig = getEnviaConfig();
+  if (!enviaConfig.enabled || !enviaConfig.apiToken) {
     await prisma.order.update({ where: { id: orderId }, data: { muStatus: 'error' } });
     log({ level: 'error', type: 'delivery', action: 'envia_not_configured', message: `Envia not configured`, metadata: { orderId } });
     return;
@@ -114,10 +113,10 @@ export async function triggerEnviaDeliveryIfNeeded(orderId: string): Promise<voi
 
     for (const item of order.items) {
       const qty = item.quantity;
-      const w = item.product?.shippingWeight || settings.defaultWeight || 0.5;
-      const l = item.product?.shippingLength || settings.defaultLength || 20;
-      const wd = item.product?.shippingWidth || settings.defaultWidth || 15;
-      const h = item.product?.shippingHeight || settings.defaultHeight || 10;
+      const w = item.product?.shippingWeight || enviaConfig.defaultWeight || 0.5;
+      const l = item.product?.shippingLength || enviaConfig.defaultLength || 20;
+      const wd = item.product?.shippingWidth || enviaConfig.defaultWidth || 15;
+      const h = item.product?.shippingHeight || enviaConfig.defaultHeight || 10;
       totalWeight += w * qty;
       maxLength = Math.max(maxLength, l);
       maxWidth = Math.max(maxWidth, wd);
@@ -125,10 +124,10 @@ export async function triggerEnviaDeliveryIfNeeded(orderId: string): Promise<voi
     }
 
     const origin = {
-      name: settings.pickupStoreName || 'KPU Cafe',
-      phone: settings.pickupPhone,
-      street: settings.pickupAddress,
-      city: settings.pickupCity,
+      name: enviaConfig.pickupStoreName || 'KPU Cafe',
+      phone: enviaConfig.pickupPhone,
+      street: enviaConfig.pickupAddress,
+      city: enviaConfig.pickupCity,
       state: 'AT',
       country: 'CO',
       postalCode: '080001',
@@ -148,7 +147,7 @@ export async function triggerEnviaDeliveryIfNeeded(orderId: string): Promise<voi
     const service = order.enviaService || 'ground';
 
     const result = await enviaGenerate({
-      apiToken: settings.enviaApiToken,
+      apiToken: enviaConfig.apiToken,
       carrier,
       service,
       origin,
@@ -185,11 +184,11 @@ export async function triggerEnviaDeliveryIfNeeded(orderId: string): Promise<voi
       const pickupDate = now.toISOString().split('T')[0];
 
       await enviaPickup({
-        apiToken: settings.enviaApiToken,
+        apiToken: enviaConfig.apiToken,
         carrier,
         pickupDate,
-        pickupTimeStart: settings.enviaPickupStart || '09:00',
-        pickupTimeEnd: settings.enviaPickupEnd || '17:00',
+        pickupTimeStart: enviaConfig.pickupStart || '09:00',
+        pickupTimeEnd: enviaConfig.pickupEnd || '17:00',
         pickupAddress: origin,
         trackingNumbers: [result.trackingNumber],
       });

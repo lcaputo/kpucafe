@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { muCreateService, MU_CITY_IDS } from '@/lib/mensajeros-urbanos';
+import { getMuConfig } from '@/lib/delivery-config';
 import { log } from '@/lib/logger';
 
 export async function POST(
@@ -24,9 +25,9 @@ export async function POST(
     const cityId = MU_CITY_IDS[order.shippingCity];
     if (!cityId) return NextResponse.json({ message: 'Ciudad no soportada por MU' }, { status: 400 });
 
-    const settings = await prisma.deliverySettings.findFirst({ where: { city: order.shippingCity, provider: 'mensajeros_urbanos' } });
-    if (!settings || !settings.enabled) {
-      return NextResponse.json({ message: 'Delivery no habilitado para esta ciudad' }, { status: 400 });
+    const muConfig = getMuConfig();
+    if (!muConfig.enabled) {
+      return NextResponse.json({ message: 'Delivery no habilitado' }, { status: 400 });
     }
 
     const now = new Date();
@@ -35,12 +36,12 @@ export async function POST(
     const timeStr = startDate.toTimeString().split(' ')[0];
 
     const result = await muCreateService({
-      accessToken: settings.muAccessToken,
+      accessToken: muConfig.accessToken,
       cityId,
       declaredValue: order.total,
       startDate: dateStr,
       startTime: timeStr,
-      storeId: settings.pickupStoreId,
+      storeId: muConfig.pickupStoreId,
       destination: {
         address: order.shippingAddress,
         orderId: order.id.slice(0, 20),
@@ -52,7 +53,7 @@ export async function POST(
         domicileValue: String(order.shippingCost || 0),
       },
       products: order.items.map((item) => ({
-        storeId: settings.pickupStoreId,
+        storeId: muConfig.pickupStoreId,
         productName: item.productName,
         quantity: item.quantity,
         value: item.unitPrice,

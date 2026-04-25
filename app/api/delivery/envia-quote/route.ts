@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { enviaRate } from '@/lib/envia';
+import { getEnviaConfig } from '@/lib/delivery-config';
 
 export async function POST(req: Request) {
   try {
@@ -10,14 +11,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'city y address son requeridos' }, { status: 400 });
     }
 
-    const settings = await prisma.deliverySettings.findFirst({
-      where: { provider: 'envia', enabled: true },
-    });
-    if (!settings || !settings.enviaApiToken) {
+    const enviaConfig = getEnviaConfig();
+    if (!enviaConfig.enabled || !enviaConfig.apiToken) {
       return NextResponse.json({ available: false, reason: 'Envio nacional no disponible' });
     }
 
-    const carriers: string[] = (settings.enviaCarriers as string[]) || ['coordinadora', 'deprisa'];
+    const carriers: string[] = enviaConfig.carriers;
 
     // Calculate package from cart items
     let totalWeight = 0;
@@ -30,10 +29,10 @@ export async function POST(req: Request) {
       for (const item of items) {
         const product = await prisma.product.findUnique({ where: { id: item.productId } });
         const qty = item.quantity || 1;
-        const weight = product?.shippingWeight || settings.defaultWeight || 0.5;
-        const length = product?.shippingLength || settings.defaultLength || 20;
-        const width = product?.shippingWidth || settings.defaultWidth || 15;
-        const height = product?.shippingHeight || settings.defaultHeight || 10;
+        const weight = product?.shippingWeight || enviaConfig.defaultWeight;
+        const length = product?.shippingLength || enviaConfig.defaultLength;
+        const width = product?.shippingWidth || enviaConfig.defaultWidth;
+        const height = product?.shippingHeight || enviaConfig.defaultHeight;
 
         totalWeight += weight * qty;
         maxLength = Math.max(maxLength, length);
@@ -42,17 +41,17 @@ export async function POST(req: Request) {
         totalValue += (item.unitPrice || 0) * qty;
       }
     } else {
-      totalWeight = settings.defaultWeight || 0.5;
-      maxLength = settings.defaultLength || 20;
-      maxWidth = settings.defaultWidth || 15;
-      maxHeight = settings.defaultHeight || 10;
+      totalWeight = enviaConfig.defaultWeight;
+      maxLength = enviaConfig.defaultLength;
+      maxWidth = enviaConfig.defaultWidth;
+      maxHeight = enviaConfig.defaultHeight;
     }
 
     const origin = {
-      name: settings.pickupStoreName || 'KPU Cafe',
-      phone: settings.pickupPhone,
-      street: settings.pickupAddress,
-      city: settings.pickupCity,
+      name: enviaConfig.pickupStoreName,
+      phone: enviaConfig.pickupPhone,
+      street: enviaConfig.pickupAddress,
+      city: enviaConfig.pickupCity,
       state: 'AT',
       country: 'CO',
       postalCode: '080001',
@@ -79,7 +78,7 @@ export async function POST(req: Request) {
 
     // Quote all carriers in parallel
     const ratePromises = carriers.map((carrier) =>
-      enviaRate({ apiToken: settings.enviaApiToken!, carrier, origin, destination, packages: [pkg] })
+      enviaRate({ apiToken: enviaConfig.apiToken, carrier, origin, destination, packages: [pkg] })
         .catch(() => null)
     );
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin } from '@/lib/auth';
 import { muCancel } from '@/lib/mensajeros-urbanos';
+import { getMuConfig } from '@/lib/delivery-config';
 import { log } from '@/lib/logger';
 
 export async function POST(
@@ -16,11 +17,10 @@ export async function POST(
     if (!order) return NextResponse.json({ message: 'Pedido no encontrado' }, { status: 404 });
     if (!order.muUuid) return NextResponse.json({ message: 'Este pedido no tiene servicio MU activo' }, { status: 400 });
 
-    const settings = await prisma.deliverySettings.findFirst({ where: { city: order.shippingCity, provider: 'mensajeros_urbanos' } });
-    if (!settings) return NextResponse.json({ message: 'Configuracion no encontrada' }, { status: 400 });
+    const muConfig = getMuConfig();
 
     await muCancel({
-      accessToken: settings.muAccessToken,
+      accessToken: muConfig.accessToken,
       uuid: order.muUuid,
       cancellationType: 3,
       description: 'Cancelado por admin KPU Cafe',

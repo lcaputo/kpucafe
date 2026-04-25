@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getMuConfig } from '@/lib/delivery-config';
 import { muCalculate, MU_CITY_IDS } from '@/lib/mensajeros-urbanos';
 
 export async function GET(req: Request) {
@@ -17,16 +17,16 @@ export async function GET(req: Request) {
       return NextResponse.json({ available: false, reason: 'Ciudad no disponible para delivery express' });
     }
 
-    const settings = await prisma.deliverySettings.findFirst({ where: { city, provider: 'mensajeros_urbanos' } });
-    if (!settings || !settings.enabled) {
+    const muConfig = getMuConfig();
+    if (!muConfig.enabled) {
       return NextResponse.json({ available: false, reason: 'Delivery express no disponible en esta ciudad' });
     }
 
     const quote = await muCalculate({
-      accessToken: settings.muAccessToken,
+      accessToken: muConfig.accessToken,
       cityId,
       declaredValue: 0,
-      originAddress: settings.pickupAddress,
+      originAddress: muConfig.pickupAddress,
       destinationAddress: address,
     });
 
@@ -34,8 +34,8 @@ export async function GET(req: Request) {
       available: true,
       shippingCost: quote.totalService,
       distance: quote.totalDistance,
-      timeSlots: settings.timeSlots,
-      availableDays: settings.availableDays,
+      timeSlots: muConfig.timeSlots,
+      availableDays: muConfig.availableDays,
     });
   } catch (err: any) {
     return NextResponse.json({ available: false, reason: 'No se pudo cotizar el envio express' });

@@ -1,4 +1,4 @@
-const MU_BASE_URL = 'https://mu-integraciones.mensajerosurbanos.com';
+const MU_BASE_URL = process.env.MU_BASE_URL || 'https://mu-integraciones.mensajerosurbanos.com';
 
 export const MU_CITY_IDS: Record<string, number> = {
   Barranquilla: 4,
