@@ -3,8 +3,8 @@
 
 export interface TimeSlot {
   label: string;
-  start: number;
-  end: number;
+  start: string;
+  end: string;
 }
 
 export interface MuConfig {
@@ -47,9 +47,9 @@ export function parseJson<T>(value: string | undefined, fallback: T): T {
 }
 
 const DEFAULT_TIME_SLOTS: TimeSlot[] = [
-  { label: "9:00 - 12:00", start: 9, end: 12 },
-  { label: "12:00 - 15:00", start: 12, end: 15 },
-  { label: "15:00 - 18:00", start: 15, end: 18 },
+  { label: "9:00 - 12:00", start: "09:00", end: "12:00" },
+  { label: "12:00 - 15:00", start: "12:00", end: "15:00" },
+  { label: "15:00 - 18:00", start: "15:00", end: "18:00" },
 ];
 
 const DEFAULT_CARRIERS = ["coordinadora", "deprisa"];
