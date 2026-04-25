@@ -396,33 +396,3 @@ model AppLog {
   @@map("app_logs")
 }
 
-// -- Delivery Settings --
-
-model DeliverySettings {
-  id              String   @id @default(uuid()) @db.Uuid
-  city            String
-  provider        String   @default("mensajeros_urbanos")
-  enabled         Boolean  @default(true)
-  muAccessToken   String   @default("") @map("mu_access_token")
-  muWebhookToken  String   @default("") @map("mu_webhook_token")
-  pickupAddress   String   @map("pickup_address")
-  pickupCity      String   @map("pickup_city")
-  pickupStoreId   String   @default("") @map("pickup_store_id")
-  pickupStoreName String   @default("") @map("pickup_store_name")
-  pickupPhone     String   @map("pickup_phone")
-  timeSlots       Json     @default("[]") @map("time_slots")
-  availableDays   Int      @default(7) @map("available_days")
-  enviaApiToken   String?  @map("envia_api_token")
-  enviaCarriers   Json?    @map("envia_carriers")
-  enviaPickupStart String? @map("envia_pickup_start")
-  enviaPickupEnd  String?  @map("envia_pickup_end")
-  defaultWeight   Float?   @map("default_weight")
-  defaultLength   Float?   @map("default_length")
-  defaultWidth    Float?   @map("default_width")
-  defaultHeight   Float?   @map("default_height")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
-
-  @@unique([city, provider])
-  @@map("delivery_settings")
-}
