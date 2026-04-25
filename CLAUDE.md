@@ -71,6 +71,14 @@ Checkout -> `useEpayco` fetches key from `/api/payments/epayco-key` -> ePayco wi
 - `JWT_SECRET`, `JWT_REFRESH_SECRET` -- JWT signing secrets
 - `EPAYCO_PUBLIC_KEY`, `EPAYCO_PRIVATE_KEY` -- ePayco credentials
 - `NEXT_PUBLIC_SITE_URL` -- Canonical site URL (https://kpucafe.com)
+- `MU_BASE_URL` -- Mensajeros Urbanos API base URL (dev: `http://dev.api.mensajerosurbanos.com`)
+- `MU_ENABLED`, `MU_ACCESS_TOKEN`, `MU_WEBHOOK_TOKEN` -- MU delivery toggle and credentials
+- `MU_CITY`, `MU_PICKUP_ADDRESS`, `MU_PICKUP_CITY`, `MU_PICKUP_STORE_ID`, `MU_PICKUP_STORE_NAME`, `MU_PICKUP_PHONE` -- MU pickup config
+- `MU_TIME_SLOTS` (JSON), `MU_AVAILABLE_DAYS` -- MU scheduling config
+- `ENVIA_ENABLED`, `ENVIA_API_TOKEN` -- Envia toggle and credentials
+- `ENVIA_CARRIERS` (JSON), `ENVIA_PICKUP_ADDRESS`, `ENVIA_PICKUP_CITY`, `ENVIA_PICKUP_PHONE`, `ENVIA_PICKUP_STORE_NAME` -- Envia pickup config
+- `ENVIA_PICKUP_START`, `ENVIA_PICKUP_END` -- Envia pickup window
+- `ENVIA_DEFAULT_WEIGHT`, `ENVIA_DEFAULT_LENGTH`, `ENVIA_DEFAULT_WIDTH`, `ENVIA_DEFAULT_HEIGHT` -- Envia package fallback dimensions
 
 ## Styling
 
