@@ -1,76 +1,48 @@
 'use client';
 
-import { useState } from 'react';
 import ProductCard from './product-card';
 import { Sparkles } from 'lucide-react';
 
 interface ProductsSectionProps {
   products: any[];
-  categories: any[];
 }
 
-export default function ProductsSection({ products, categories }: ProductsSectionProps) {
-  const [activeCategoryId, setActiveCategoryId] = useState<string | 'all'>('all');
+function mapProduct(p: any) {
+  const pVariants = p.variants || [];
+  const weights = Array.from(new Set(pVariants.map((v: any) => v.weight))).map((w: any) => ({
+    value: w,
+  }));
+  const grinds = Array.from(new Set(pVariants.map((v: any) => v.grind))) as string[];
 
-  const mapped = products.map((p: any) => {
-    const pVariants = p.variants || [];
-    const weights = Array.from(new Set(pVariants.map((v: any) => v.weight))).map((w: any) => ({
-      value: w,
-    }));
-    const grinds = Array.from(new Set(pVariants.map((v: any) => v.grind))) as string[];
-
-    const stockMap: Record<string, number> = {};
-    const priceMap: Record<string, number> = {};
-    pVariants.forEach((v: any) => {
-      const key = `${v.weight}-${v.grind}`;
-      stockMap[key] = v.stock ?? 0;
-      priceMap[key] = v.priceModifier ?? 0;
-    });
-
-    return {
-      id: p.id,
-      name: p.name,
-      description: p.description || '',
-      image: p.imageUrl || '/placeholder.svg',
-      weights: weights.length > 0 ? weights : [{ value: '250g' }],
-      grinds: grinds.length > 0 ? grinds : ['Grano', 'Molido'],
-      roastLevel: p.roastLevel || 3,
-      origin: p.origin || '',
-      stockMap,
-      priceMap,
-      categoryId: p.categoryId,
-      hasVariants: p.hasVariants,
-      basePrice: p.basePrice,
-    };
+  const stockMap: Record<string, number> = {};
+  const priceMap: Record<string, number> = {};
+  pVariants.forEach((v: any) => {
+    const key = `${v.weight}-${v.grind}`;
+    stockMap[key] = v.stock ?? 0;
+    priceMap[key] = v.priceModifier ?? 0;
   });
 
-  // Categories that actually have products
-  const categoriesWithProducts = categories.filter((cat: any) =>
-    mapped.some((p) => p.categoryId === cat.id),
-  );
+  return {
+    id: p.id,
+    name: p.name,
+    description: p.description || '',
+    image: p.imageUrl || '/placeholder.svg',
+    weights: weights.length > 0 ? weights : [{ value: '250g' }],
+    grinds: grinds.length > 0 ? grinds : ['Grano', 'Molido'],
+    roastLevel: p.roastLevel || 3,
+    origin: p.origin || '',
+    stockMap,
+    priceMap,
+    categoryId: p.categoryId,
+    hasVariants: p.hasVariants,
+    basePrice: p.basePrice,
+  };
+}
 
-  // Uncategorized products
-  const uncategorizedProducts = mapped.filter((p) => !p.categoryId);
+export { mapProduct };
 
-  // All tabs: categories with products + "Sin categoria" if any
-  const tabs = [
-    ...categoriesWithProducts,
-    ...(uncategorizedProducts.length > 0 ? [{ id: '__none__', name: 'Otros', icon: null }] : []),
-  ];
-
-  const effectiveTab = activeCategoryId;
-
-  const visibleProducts =
-    effectiveTab === 'all'
-      ? mapped
-      : effectiveTab === '__none__'
-        ? uncategorizedProducts
-        : mapped.filter((p) => p.categoryId === effectiveTab);
-
-  const activeCategory = categories.find((c: any) => c.id === effectiveTab);
-
-  const sectionTitle = activeCategory?.name ?? 'Cafe de especialidad';
-  const sectionDescription = activeCategory?.description ?? null;
+export default function ProductsSection({ products }: ProductsSectionProps) {
+  const mapped = products.map(mapProduct);
 
   return (
     <section id="productos" aria-label="Productos" className="py-24 bg-background">
@@ -100,38 +72,8 @@ export default function ProductsSection({ products, categories }: ProductsSectio
           </p>
         </div>
 
-        {/* Category tabs */}
-        {tabs.length > 0 && (
-          <div className="flex gap-2 justify-center flex-wrap mb-12">
-            <button
-              onClick={() => setActiveCategoryId('all')}
-              className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200 cursor-pointer min-h-[44px] ${
-                effectiveTab === 'all'
-                  ? 'bg-[hsl(14_82%_40%)] text-white border-[hsl(14_82%_40%)] shadow-warm'
-                  : 'border-border text-foreground hover:border-primary/50 bg-background'
-              }`}
-            >
-              Todo
-            </button>
-            {tabs.map((cat: any) => (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategoryId(cat.id)}
-                className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200 cursor-pointer min-h-[44px] ${
-                  effectiveTab === cat.id
-                    ? 'bg-[hsl(14_82%_40%)] text-white border-[hsl(14_82%_40%)] shadow-warm'
-                    : 'border-border text-foreground hover:border-primary/50 bg-background'
-                }`}
-              >
-                {cat.icon && <span>{cat.icon}</span>}
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        )}
-
         {/* Products grid */}
-        {visibleProducts.length === 0 ? (
+        {mapped.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4">
               <span className="text-2xl">☕</span>
@@ -140,7 +82,7 @@ export default function ProductsSection({ products, categories }: ProductsSectio
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {visibleProducts.map((product: any, index: number) => (
+            {mapped.map((product: any, index: number) => (
               <div
                 key={product.id}
                 className="animate-fade-in"

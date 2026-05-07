@@ -1,18 +1,26 @@
 const MU_BASE_URL = process.env.MU_BASE_URL || 'https://mu-integraciones.mensajerosurbanos.com';
 
-export const MU_CITY_IDS: Record<string, number> = {
-  Barranquilla: 4,
-  Bogota: 1,
-  Cali: 2,
-  Medellin: 3,
-  Cartagena: 8,
+const MU_CITY_IDS_RAW: Record<string, number> = {
+  barranquilla: 4,
+  bogota: 1,
+  cali: 2,
+  medellin: 3,
+  cartagena: 8,
 };
+
+/** Case-insensitive city ID lookup */
+export const MU_CITY_IDS = new Proxy(MU_CITY_IDS_RAW, {
+  get(target, prop: string) {
+    return target[prop.toLowerCase()];
+  },
+});
 
 // --- Types ---
 
 export interface MuCalculateParams {
   accessToken: string;
   cityId: number;
+  cityName: string;
   declaredValue: number;
   originAddress: string;
   destinationAddress: string;
@@ -122,13 +130,33 @@ export class MuApiError extends Error {
 // --- Shared POST helper ---
 
 async function muPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`${MU_BASE_URL}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const url = `${MU_BASE_URL}${path}`;
+  const payload = JSON.stringify(body);
+  console.log(`[MU API] POST ${url}`);
+  console.log(`[MU API] payload:`, payload);
 
-  const data = await res.json();
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+    });
+  } catch (err: any) {
+    console.error(`[MU API] Network error: ${err.message}`, err.cause || '');
+    throw err;
+  }
+
+  const text = await res.text();
+  console.log(`[MU API] ${path} → ${res.status}`, text);
+
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new MuApiError(res.status, `Invalid JSON response: ${text.slice(0, 200)}`);
+  }
+
   if (!res.ok) {
     throw new MuApiError(res.status, data.message || JSON.stringify(data));
   }
@@ -146,8 +174,8 @@ export async function muCalculate(params: MuCalculateParams): Promise<MuCalculat
     city: params.cityId,
     parking_surcharge: 0,
     coordinates: [
-      { type: '1', address: params.originAddress },
-      { type: '1', address: params.destinationAddress },
+      { address: params.originAddress, city: params.cityName },
+      { address: params.destinationAddress, city: params.cityName },
     ],
   });
 

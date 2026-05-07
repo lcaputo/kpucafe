@@ -57,6 +57,7 @@ export default function AdminProductsPage() {
   const [variantsProductName, setVariantsProductName] = useState('');
   const [filterCategoryId, setFilterCategoryId] = useState<string | 'all'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -196,6 +197,7 @@ export default function AdminProductsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     const payload = {
       name: formData.name,
       description: formData.description,
@@ -248,6 +250,8 @@ export default function AdminProductsPage() {
       }
     } catch (err: any) {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -615,9 +619,13 @@ export default function AdminProductsPage() {
               <button
                 type="submit"
                 form="product-form"
-                className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-semibold"
+                disabled={saving}
+                className="flex-1 py-2.5 bg-primary text-primary-foreground rounded-xl hover:bg-primary/90 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {editingProduct ? 'Guardar cambios' : 'Crear producto'}
+                {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+                {saving
+                  ? (editingProduct ? 'Guardando...' : 'Creando...')
+                  : (editingProduct ? 'Guardar cambios' : 'Crear producto')}
               </button>
             </div>
           </div>

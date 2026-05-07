@@ -12,6 +12,11 @@ import {
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
+function mockResponse(ok: boolean, data: any, status = 200) {
+  const text = JSON.stringify(data);
+  return { ok, status, text: async () => text, json: async () => data };
+}
+
 beforeEach(() => {
   vi.resetAllMocks();
 });
@@ -24,23 +29,21 @@ describe('MU_CITY_IDS', () => {
 
 describe('muCalculate', () => {
   it('calls MU /api/calculate with address strings and returns mapped result', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        total_service: 8500,
-        total_distance: '5.2 km',
-        base_value: 6000,
-        distance_surcharge: 2000,
-        insurance_surcharge: 500,
-      }),
-    });
+    mockFetch.mockResolvedValueOnce(mockResponse(true, {
+      total_service: 8500,
+      total_distance: '5.2 km',
+      base_value: 6000,
+      distance_surcharge: 2000,
+      insurance_surcharge: 500,
+    }));
 
     const result = await muCalculate({
       accessToken: 'test-token',
       cityId: 4,
+      cityName: 'barranquilla',
       declaredValue: 50000,
-      originAddress: 'Calle 72 #55-30, Barranquilla',
-      destinationAddress: 'Calle 84 #42-15, Barranquilla',
+      originAddress: 'Calle 72 #55-30',
+      destinationAddress: 'Calle 84 #42-15',
     });
 
     expect(mockFetch).toHaveBeenCalledOnce();
@@ -53,23 +56,20 @@ describe('muCalculate', () => {
     expect(body.city).toBe(4);
     expect(body.declared_value).toBe(50000);
     expect(body.coordinates).toHaveLength(2);
-    expect(body.coordinates[0].address).toBe('Calle 72 #55-30, Barranquilla');
-    expect(body.coordinates[1].address).toBe('Calle 84 #42-15, Barranquilla');
+    expect(body.coordinates[0]).toEqual({ address: 'Calle 72 #55-30', city: 'barranquilla' });
+    expect(body.coordinates[1]).toEqual({ address: 'Calle 84 #42-15', city: 'barranquilla' });
 
     expect(result.totalService).toBe(8500);
     expect(result.totalDistance).toBe('5.2 km');
   });
 
   it('throws on MU API error', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 400,
-      json: async () => ({ message: 'Invalid token' }),
-    });
+    mockFetch.mockResolvedValueOnce(mockResponse(false, { message: 'Invalid token' }, 400));
 
     await expect(muCalculate({
       accessToken: 'bad-token',
       cityId: 4,
+      cityName: 'barranquilla',
       declaredValue: 50000,
       originAddress: 'origin',
       destinationAddress: 'dest',
@@ -79,16 +79,13 @@ describe('muCalculate', () => {
 
 describe('muCreateService', () => {
   it('calls MU /api/create and returns uuid + taskId', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        task_id: 12345,
-        uuid: 'abc-def-123',
-        status: 2,
-        total: 8500,
-        distance: '5.2',
-      }),
-    });
+    mockFetch.mockResolvedValueOnce(mockResponse(true, {
+      task_id: 12345,
+      uuid: 'abc-def-123',
+      status: 2,
+      total: 8500,
+      distance: '5.2',
+    }));
 
     const result = await muCreateService({
       accessToken: 'test-token',
@@ -126,15 +123,12 @@ describe('muCreateService', () => {
 
 describe('muTrack', () => {
   it('returns structured data with driver info', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        data: { task_id: 12345, status_id: 3, status: 'assigned' },
-        resource: { name: 'Carlos', phone: '3009876543', plate_number: 'ABC123', type_resource_name: 'Motocicleta', photo: 'https://photo.url' },
-        address: [{ address: 'Calle 84', status: 0 }],
-        history: [{ status_id: 2, status: 'on_hold', date: '2026-04-21' }],
-      }),
-    });
+    mockFetch.mockResolvedValueOnce(mockResponse(true, {
+      data: { task_id: 12345, status_id: 3, status: 'assigned' },
+      resource: { name: 'Carlos', phone: '3009876543', plate_number: 'ABC123', type_resource_name: 'Motocicleta', photo: 'https://photo.url' },
+      address: [{ address: 'Calle 84', status: 0 }],
+      history: [{ status_id: 2, status: 'on_hold', date: '2026-04-21' }],
+    }));
 
     const result = await muTrack({ accessToken: 'test-token', uuid: 'abc-def-123' });
 
@@ -148,10 +142,7 @@ describe('muTrack', () => {
 
 describe('muCancel', () => {
   it('uses the acces_token typo field', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ message: 'Cancelled' }),
-    });
+    mockFetch.mockResolvedValueOnce(mockResponse(true, { message: 'Cancelled' }));
 
     await muCancel({
       accessToken: 'test-token',
@@ -169,10 +160,7 @@ describe('muCancel', () => {
 
 describe('muAddStore', () => {
   it('calls /api/Add-store with correct payload', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ id: 999 }),
-    });
+    mockFetch.mockResolvedValueOnce(mockResponse(true, { id: 999 }));
 
     await muAddStore({
       accessToken: 'test-token',
@@ -192,10 +180,7 @@ describe('muAddStore', () => {
 
 describe('muRegisterWebhook', () => {
   it('calls /api/webhook with correct payload', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ message: 'OK' }),
-    });
+    mockFetch.mockResolvedValueOnce(mockResponse(true, { message: 'OK' }));
 
     await muRegisterWebhook({
       accessToken: 'test-token',

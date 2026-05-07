@@ -40,7 +40,7 @@ export default function Hero() {
               }}
             >
               <Leaf className="h-3.5 w-3.5" />
-              Cafe de especialidad colombiano
+              Cafe de especialidad
             </div>
 
             {/* Headline — Amatic SC at full glory */}

@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma';
 import Header from '@/components/header';
 import Hero from '@/components/hero';
 import ProductsSection from '@/components/products-section';
+import EquipmentSection from '@/components/equipment-section';
 import SubscriptionSection from '@/components/subscription-section';
 import Footer from '@/components/footer';
 import CartDrawer from '@/components/cart-drawer';
@@ -54,6 +55,15 @@ export default async function HomePage() {
   const plainProducts = JSON.parse(JSON.stringify(products));
   const plainCategories = JSON.parse(JSON.stringify(categories));
   const plainPlans = JSON.parse(JSON.stringify(plans));
+
+  // Split products: coffee vs equipment/accessories
+  const coffeeCategory = plainCategories.find(
+    (c: any) => c.name === 'Cafe' || c.name === 'Café',
+  );
+  const coffeeCategoryId = coffeeCategory?.id;
+  const coffeeProducts = plainProducts.filter((p: any) => p.categoryId === coffeeCategoryId);
+  const equipmentProducts = plainProducts.filter((p: any) => p.categoryId && p.categoryId !== coffeeCategoryId);
+  const equipmentCategories = plainCategories.filter((c: any) => c.id !== coffeeCategoryId);
 
   const websiteJsonLd = {
     '@context': 'https://schema.org',
@@ -132,7 +142,8 @@ export default async function HomePage() {
         <Header />
         <main id="main-content">
           <Hero />
-          <ProductsSection products={plainProducts} categories={plainCategories} />
+          <ProductsSection products={coffeeProducts} />
+          <EquipmentSection products={equipmentProducts} categories={equipmentCategories} />
           <SubscriptionSection plans={plainPlans} />
         </main>
         <Footer />

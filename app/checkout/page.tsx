@@ -540,7 +540,7 @@ export default function Checkout() {
   };
 
   const fetchMuQuote = async (city: string, address: string) => {
-    if (city !== 'Barranquilla' || !address) {
+    if (city.toLowerCase() !== 'barranquilla' || !address) {
       setMuAvailable(false);
       setMuShippingCost(null);
       return;
@@ -566,7 +566,7 @@ export default function Checkout() {
   };
 
   const fetchEnviaQuote = async (city: string, address: string, department: string, postalCode: string) => {
-    if (city === 'Barranquilla' || !city || !address) {
+    if (city.toLowerCase() === 'barranquilla' || !city || !address) {
       setEnviaAvailable(false);
       setEnviaShippingCost(null);
       return;

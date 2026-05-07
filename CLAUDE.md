@@ -70,6 +70,7 @@ Checkout -> `useEpayco` fetches key from `/api/payments/epayco-key` -> ePayco wi
 - `DATABASE_URL` -- PostgreSQL connection string
 - `JWT_SECRET`, `JWT_REFRESH_SECRET` -- JWT signing secrets
 - `EPAYCO_PUBLIC_KEY`, `EPAYCO_PRIVATE_KEY` -- ePayco credentials
+- `EPAYCO_P_CUST_ID_CLIENTE`, `EPAYCO_P_KEY` -- ePayco webhook signature verification
 - `NEXT_PUBLIC_SITE_URL` -- Canonical site URL (https://kpucafe.com)
 - `MU_BASE_URL` -- Mensajeros Urbanos API base URL (dev: `http://dev.api.mensajerosurbanos.com`)
 - `MU_ENABLED`, `MU_ACCESS_TOKEN`, `MU_WEBHOOK_TOKEN` -- MU delivery toggle and credentials

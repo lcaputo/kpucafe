@@ -14,7 +14,22 @@ export interface LogParams {
   ipAddress?: string;
 }
 
+const CONSOLE_FN: Record<LogLevel, (...args: any[]) => void> = {
+  info: console.log,
+  warn: console.warn,
+  error: console.error,
+};
+
 export function log(params: LogParams): void {
+  // Print to terminal for delivery/webhook and error events
+  if (params.type === 'delivery' || params.level === 'error') {
+    const fn = CONSOLE_FN[params.level];
+    const prefix = `[${params.level.toUpperCase()}] [${params.type}/${params.action}]`;
+    fn(prefix, params.message);
+    if (params.metadata) fn('  metadata:', JSON.stringify(params.metadata, null, 2));
+    if (params.error) fn('  error:', params.error);
+  }
+
   prisma.appLog.create({
     data: {
       level: params.level,

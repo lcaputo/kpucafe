@@ -44,7 +44,16 @@ const TYPE_LABELS: Record<string, string> = {
   subscription: 'Suscripción',
   admin: 'Admin',
   system: 'Sistema',
+  delivery: 'Envio/Webhook',
 };
+
+const QUICK_FILTERS = [
+  { label: 'Todo', level: '', type: '' },
+  { label: 'Pedidos', level: '', type: 'order' },
+  { label: 'Webhooks', level: '', type: 'delivery' },
+  { label: 'Pagos', level: '', type: 'payment' },
+  { label: 'Errores', level: 'error', type: '' },
+];
 
 export default function AdminLogsPage() {
   const { toast } = useToast();
@@ -117,8 +126,27 @@ export default function AdminLogsPage() {
     setPage(1);
   };
 
+  const activeQuickFilter = QUICK_FILTERS.find(f => f.level === level && f.type === type) || null;
+
   return (
     <div>
+      {/* Quick filter tabs */}
+      <div className="flex gap-2 flex-wrap mb-4">
+        {QUICK_FILTERS.map(f => (
+          <button
+            key={f.label}
+            onClick={() => { setLevel(f.level); setType(f.type); setPage(1); }}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-all ${
+              activeQuickFilter === f
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'border-border text-muted-foreground hover:border-primary'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+
       {/* Filters */}
       <div className="bg-card rounded-xl p-4 shadow-soft mb-6">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-3">
@@ -145,6 +173,7 @@ export default function AdminLogsPage() {
             <option value="subscription">Suscripción</option>
             <option value="admin">Admin</option>
             <option value="system">Sistema</option>
+            <option value="delivery">Envio/Webhook</option>
           </select>
 
           <input

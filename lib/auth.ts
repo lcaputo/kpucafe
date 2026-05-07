@@ -66,10 +66,35 @@ export async function clearAuthCookies() {
 export async function getSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get('access_token')?.value;
-  if (!token) return null;
+
+  let payload: { sub: string; email: string } | null = null;
+
+  if (token) {
+    try {
+      payload = await verifyAccessToken(token);
+    } catch {
+      // Access token expired or invalid — try refresh
+    }
+  }
+
+  // If access token failed, attempt silent refresh
+  if (!payload) {
+    const refreshToken = cookieStore.get('refresh_token')?.value;
+    if (!refreshToken) return null;
+
+    try {
+      const refreshPayload = await verifyRefreshToken(refreshToken);
+      // Issue new tokens
+      const newAccessToken = await signAccessToken({ sub: refreshPayload.sub, email: refreshPayload.email });
+      const newRefreshToken = await signRefreshToken({ sub: refreshPayload.sub, email: refreshPayload.email });
+      await setAuthCookies(newAccessToken, newRefreshToken);
+      payload = { sub: refreshPayload.sub, email: refreshPayload.email };
+    } catch {
+      return null;
+    }
+  }
 
   try {
-    const payload = await verifyAccessToken(token);
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
       include: { roles: true, profile: true },
