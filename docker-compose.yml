@@ -16,6 +16,18 @@ services:
       timeout: 3s
       retries: 5
 
+  migrate:
+    build:
+      context: .
+      target: builder
+    command: ./node_modules/.bin/prisma migrate deploy
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://kpucafe:${POSTGRES_PASSWORD:-changeme}@db:5432/kpucafe
+    restart: "no"
+
   app:
     build: .
     restart: unless-stopped
@@ -24,6 +36,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     environment:
       DATABASE_URL: postgresql://kpucafe:${POSTGRES_PASSWORD:-changeme}@db:5432/kpucafe
       JWT_SECRET: ${JWT_SECRET}
