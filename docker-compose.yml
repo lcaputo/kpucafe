@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kpucafe
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+      POSTGRES_DB: kpucafe
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kpucafe"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://kpucafe:${POSTGRES_PASSWORD:-changeme}@db:5432/kpucafe
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      EPAYCO_PUBLIC_KEY: ${EPAYCO_PUBLIC_KEY}
+      EPAYCO_PRIVATE_KEY: ${EPAYCO_PRIVATE_KEY}
+      EPAYCO_P_CUST_ID_CLIENTE: ${EPAYCO_P_CUST_ID_CLIENTE}
+      EPAYCO_P_KEY: ${EPAYCO_P_KEY}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+      MU_BASE_URL: ${MU_BASE_URL:-}
+      MU_ENABLED: ${MU_ENABLED:-false}
+      MU_ACCESS_TOKEN: ${MU_ACCESS_TOKEN:-}
+      MU_WEBHOOK_TOKEN: ${MU_WEBHOOK_TOKEN:-}
+      MU_CITY: ${MU_CITY:-}
+      MU_PICKUP_ADDRESS: ${MU_PICKUP_ADDRESS:-}
+      MU_PICKUP_CITY: ${MU_PICKUP_CITY:-}
+      MU_PICKUP_STORE_ID: ${MU_PICKUP_STORE_ID:-}
+      MU_PICKUP_STORE_NAME: ${MU_PICKUP_STORE_NAME:-}
+      MU_PICKUP_PHONE: ${MU_PICKUP_PHONE:-}
+      MU_TIME_SLOTS: ${MU_TIME_SLOTS:-}
+      MU_AVAILABLE_DAYS: ${MU_AVAILABLE_DAYS:-}
+      ENVIA_ENABLED: ${ENVIA_ENABLED:-false}
+      ENVIA_API_TOKEN: ${ENVIA_API_TOKEN:-}
+      ENVIA_CARRIERS: ${ENVIA_CARRIERS:-}
+      ENVIA_PICKUP_ADDRESS: ${ENVIA_PICKUP_ADDRESS:-}
+      ENVIA_PICKUP_CITY: ${ENVIA_PICKUP_CITY:-}
+      ENVIA_PICKUP_PHONE: ${ENVIA_PICKUP_PHONE:-}
+      ENVIA_PICKUP_STORE_NAME: ${ENVIA_PICKUP_STORE_NAME:-}
+      ENVIA_PICKUP_START: ${ENVIA_PICKUP_START:-}
+      ENVIA_PICKUP_END: ${ENVIA_PICKUP_END:-}
+      ENVIA_DEFAULT_WEIGHT: ${ENVIA_DEFAULT_WEIGHT:-}
+      ENVIA_DEFAULT_LENGTH: ${ENVIA_DEFAULT_LENGTH:-}
+      ENVIA_DEFAULT_WIDTH: ${ENVIA_DEFAULT_WIDTH:-}
+      ENVIA_DEFAULT_HEIGHT: ${ENVIA_DEFAULT_HEIGHT:-}
+
+volumes:
+  pgdata:
