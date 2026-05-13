@@ -1,45 +1,11 @@
 services:
-  db:
-    image: postgres:16-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: kpucafe
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
-      POSTGRES_DB: kpucafe
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U kpucafe"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  migrate:
-    build:
-      context: .
-      target: builder
-    command: ./node_modules/.bin/prisma migrate deploy
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://kpucafe:${POSTGRES_PASSWORD:-changeme}@db:5432/kpucafe
-    restart: "no"
-
   app:
     build: .
     restart: unless-stopped
     ports:
       - "3000:3000"
-    depends_on:
-      db:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     environment:
-      DATABASE_URL: postgresql://kpucafe:${POSTGRES_PASSWORD:-changeme}@db:5432/kpucafe
+      DATABASE_URL: ${DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
       EPAYCO_PUBLIC_KEY: ${EPAYCO_PUBLIC_KEY}
@@ -72,6 +38,3 @@ services:
       ENVIA_DEFAULT_LENGTH: ${ENVIA_DEFAULT_LENGTH:-}
       ENVIA_DEFAULT_WIDTH: ${ENVIA_DEFAULT_WIDTH:-}
       ENVIA_DEFAULT_HEIGHT: ${ENVIA_DEFAULT_HEIGHT:-}
-
-volumes:
-  pgdata:
