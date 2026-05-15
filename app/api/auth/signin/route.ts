@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       include: { roles: true, profile: true },
     });
 
-    if (!user || !(await comparePassword(password, user.passwordHash))) {
+    if (!user) {
       log({ level: 'warn', type: 'auth', action: 'login_failed', message: 'Credenciales incorrectas', metadata: { email } });
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
@@ -22,6 +22,11 @@ export async function POST(req: Request) {
         { message: 'Debes completar tu registro primero. Revisa tu correo electronico.' },
         { status: 403 }
       );
+    }
+
+    if (!(await comparePassword(password, user.passwordHash))) {
+      log({ level: 'warn', type: 'auth', action: 'login_failed', message: 'Credenciales incorrectas', metadata: { email } });
+      return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
 
     const accessToken = await signAccessToken({ sub: user.id, email: user.email });
