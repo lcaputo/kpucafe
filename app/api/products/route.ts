@@ -5,7 +5,13 @@ export async function GET() {
   try {
     const products = await prisma.product.findMany({
       where: { isActive: true },
-      include: { variants: true, category: true },
+      include: {
+        variants: {
+          where: { isActive: true },
+          orderBy: { createdAt: 'asc' },
+        },
+        category: true,
+      },
       orderBy: { sortOrder: 'asc' },
     });
 
