@@ -65,6 +65,18 @@ interface ProductOption {
   variants: ProductVariant[];
 }
 
+interface ShippingAddressOption {
+  id: string;
+  label: string;
+  fullName: string;
+  phone: string;
+  address: string;
+  city: string;
+  department: string;
+  postalCode: string | null;
+  isDefault: boolean;
+}
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const muStatusConfig: Record<string, { label: string; color: string; bg: string }> = {
@@ -528,6 +540,12 @@ function NewDomicilioForm({
   const [newCustomerPhone, setNewCustomerPhone] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryCity, setDeliveryCity] = useState('');
+  const [customerAddresses, setCustomerAddresses] = useState<ShippingAddressOption[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const [loadingAddresses, setLoadingAddresses] = useState(false);
+  const [deliveryDepartment, setDeliveryDepartment] = useState('');
+  const [deliveryPostalCode, setDeliveryPostalCode] = useState('');
+  const [useNewAddress, setUseNewAddress] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Step 2: Products
@@ -631,15 +649,17 @@ function NewDomicilioForm({
     setSubmitting(true);
     try {
       const slot = dispatchType === 'scheduled' ? TIME_SLOTS.find(s => s.label === scheduledSlot) : null;
-      const scheduledDateTime = slot && scheduledDate
-        ? `${scheduledDate}T${slot.start}:00`
-        : null;
 
       const body = {
         customer: selectedCustomer
           ? { id: selectedCustomer.id, fullName: selectedCustomer.fullName ?? '', email: selectedCustomer.email, phone: selectedCustomer.phone ?? '' }
           : { fullName: newCustomerName, email: newCustomerEmail, phone: newCustomerPhone },
-        address: { address: deliveryAddress, city: deliveryCity },
+        address: {
+          address: deliveryAddress,
+          city: deliveryCity,
+          department: deliveryDepartment || null,
+          postalCode: deliveryPostalCode || null,
+        },
         items: cart.map(c => ({
           productId: c.productId,
           variantId: c.variantId,
@@ -649,7 +669,7 @@ function NewDomicilioForm({
           unitPrice: c.unitPrice,
         })),
         paymentMethod,
-        dispatch: { type: dispatchType, date: scheduledDateTime ?? undefined, timeSlot: dispatchType === 'scheduled' ? scheduledSlot : undefined },
+        dispatch: { type: dispatchType, date: dispatchType === 'scheduled' ? scheduledDate : undefined, timeSlot: dispatchType === 'scheduled' && slot ? slot.start : undefined },
         notes: notes.trim(),
       };
 
@@ -741,7 +761,34 @@ function NewDomicilioForm({
                         {customerResults.map(c => (
                           <button
                             key={c.id}
-                            onClick={() => { setSelectedCustomer(c); setCustomerSearch(c.fullName || c.email); setCustomerResults([]); }}
+                            onClick={() => {
+                              setSelectedCustomer(c);
+                              setCustomerSearch(c.fullName || c.email);
+                              setCustomerResults([]);
+                              setSelectedAddressId(null);
+                              setCustomerAddresses([]);
+                              setUseNewAddress(false);
+                              // Fetch addresses for registered customers
+                              if (c.registrationComplete) {
+                                setLoadingAddresses(true);
+                                fetch(`/api/admin/customers/${c.id}/addresses`)
+                                  .then(r => r.json())
+                                  .then(data => {
+                                    setCustomerAddresses(data);
+                                    // Auto-select default address
+                                    const def = data.find((a: ShippingAddressOption) => a.isDefault);
+                                    if (def) {
+                                      setSelectedAddressId(def.id);
+                                      setDeliveryAddress(def.address);
+                                      setDeliveryCity(def.city);
+                                      setDeliveryDepartment(def.department);
+                                      setDeliveryPostalCode(def.postalCode || '');
+                                    }
+                                  })
+                                  .catch(() => {})
+                                  .finally(() => setLoadingAddresses(false));
+                              }
+                            }}
                             className="w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors border-b border-border last:border-0"
                           >
                             <div className="flex items-center justify-between">
@@ -762,23 +809,31 @@ function NewDomicilioForm({
 
                     {/* Selected customer */}
                     {selectedCustomer && (
-                      <div className="mt-2 flex items-center justify-between bg-primary/10 border border-primary/20 rounded-xl px-3 py-2">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{selectedCustomer.fullName || selectedCustomer.email}</p>
-                          <p className="text-xs text-muted-foreground">{selectedCustomer.phone}</p>
+                      <div className="mt-2 p-3 bg-primary/5 border border-primary/20 rounded-xl space-y-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-foreground">{selectedCustomer.fullName || selectedCustomer.email}</p>
+                          <div className="flex items-center gap-2">
+                            {!selectedCustomer.registrationComplete && (
+                              <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full">Pre-registro</span>
+                            )}
+                            <button onClick={() => { setSelectedCustomer(null); setCustomerSearch(''); setCustomerAddresses([]); setSelectedAddressId(null); setDeliveryAddress(''); setDeliveryCity(''); setDeliveryDepartment(''); setDeliveryPostalCode(''); setUseNewAddress(false); }} className="p-1 hover:bg-muted rounded-lg">
+                              <X className="h-3.5 w-3.5 text-muted-foreground" />
+                            </button>
+                          </div>
                         </div>
-                        <button onClick={() => { setSelectedCustomer(null); setCustomerSearch(''); }} className="p-1 hover:bg-muted rounded-lg">
-                          <X className="h-3.5 w-3.5 text-muted-foreground" />
-                        </button>
+                        {selectedCustomer.email && <p className="text-xs text-muted-foreground">{selectedCustomer.email}</p>}
+                        {selectedCustomer.phone && <p className="text-xs text-muted-foreground">{selectedCustomer.phone}</p>}
                       </div>
                     )}
                   </div>
 
-                  <div className="text-center">
-                    <button onClick={() => setIsNewCustomer(true)} className="text-sm text-primary hover:underline">
-                      + Crear nuevo cliente
-                    </button>
-                  </div>
+                  {!selectedCustomer && (
+                    <div className="text-center">
+                      <button onClick={() => setIsNewCustomer(true)} className="text-sm text-primary hover:underline">
+                        + Crear nuevo cliente
+                      </button>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="space-y-3">
@@ -803,14 +858,91 @@ function NewDomicilioForm({
               {/* Address */}
               <div className="space-y-3 border-t border-border pt-4">
                 <p className="text-sm font-medium text-foreground">Dirección de entrega</p>
-                <input type="text" placeholder="Dirección *" value={deliveryAddress}
-                  onChange={e => setDeliveryAddress(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
-                <select value={deliveryCity} onChange={e => setDeliveryCity(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                  <option value="">Selecciona ciudad *</option>
-                  {MU_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
+
+                {loadingAddresses && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Cargando direcciones...
+                  </div>
+                )}
+
+                {/* Case A: Registered customer with saved addresses */}
+                {selectedCustomer?.registrationComplete && customerAddresses.length > 0 && !useNewAddress && (
+                  <div className="space-y-2">
+                    {customerAddresses.map((addr) => (
+                      <button
+                        key={addr.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAddressId(addr.id);
+                          setDeliveryAddress(addr.address);
+                          setDeliveryCity(addr.city);
+                          setDeliveryDepartment(addr.department);
+                          setDeliveryPostalCode(addr.postalCode || '');
+                        }}
+                        className={`w-full text-left p-3 rounded-xl border transition-colors ${
+                          selectedAddressId === addr.id
+                            ? 'border-primary bg-primary/5'
+                            : 'border-border hover:bg-muted/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-medium">{addr.label}</p>
+                          {addr.isDefault && <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">Principal</span>}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">{addr.address}, {addr.city}</p>
+                        {addr.department && <p className="text-xs text-muted-foreground">{addr.department}</p>}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => { setUseNewAddress(true); setSelectedAddressId(null); setDeliveryAddress(''); setDeliveryCity(''); setDeliveryDepartment(''); setDeliveryPostalCode(''); }}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      + Usar otra dirección
+                    </button>
+                  </div>
+                )}
+
+                {/* Case B & C: No saved addresses, pre-registered, new customer, or "usar otra dirección" */}
+                {(!selectedCustomer?.registrationComplete || customerAddresses.length === 0 || useNewAddress || isNewCustomer) && !loadingAddresses && (
+                  <div className="space-y-3">
+                    {useNewAddress && (
+                      <button type="button" onClick={() => { setUseNewAddress(false); const def = customerAddresses.find(a => a.isDefault); if (def) { setSelectedAddressId(def.id); setDeliveryAddress(def.address); setDeliveryCity(def.city); setDeliveryDepartment(def.department); setDeliveryPostalCode(def.postalCode || ''); } }} className="text-sm text-muted-foreground hover:text-foreground">
+                        ← Volver a mis direcciones
+                      </button>
+                    )}
+                    <input
+                      type="text"
+                      placeholder="Dirección *"
+                      value={deliveryAddress}
+                      onChange={e => setDeliveryAddress(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <select
+                      value={deliveryCity}
+                      onChange={e => setDeliveryCity(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">Selecciona ciudad *</option>
+                      {MU_CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Departamento"
+                      value={deliveryDepartment}
+                      onChange={e => setDeliveryDepartment(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Código postal (opcional)"
+                      value={deliveryPostalCode}
+                      onChange={e => setDeliveryPostalCode(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-border bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
