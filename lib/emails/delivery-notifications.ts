@@ -6,6 +6,14 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://kpucafe.com';
 
 const formatOrderId = (orderId: string): string => orderId.slice(0, 8).toUpperCase();
 
+const escapeHtml = (text: string): string =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+
 const wrap = (content: string): string => `
 <!DOCTYPE html>
 <html>
@@ -64,14 +72,14 @@ export async function sendDomicilioCreatedEmail(data: {
   if (!resend) return;
 
   const itemsHtml = data.items
-    .map((item) => `<li>${item.productName} x${item.quantity} — $${(item.unitPrice * item.quantity).toLocaleString('es-CO')}</li>`)
+    .map((item) => `<li>${escapeHtml(item.productName)} x${item.quantity} — $${(item.unitPrice * item.quantity).toLocaleString('es-CO')}</li>`)
     .join('');
 
   const html = wrap(`
     <tr>
       <td style="padding: 24px;">
         <p style="margin: 0 0 8px 0; font-size: 14px; color: #666;">Pedido #${formatOrderId(data.orderId)}</p>
-        <p style="margin: 0 0 16px 0; font-size: 16px;">Hola ${data.customerName},</p>
+        <p style="margin: 0 0 16px 0; font-size: 16px;">Hola ${escapeHtml(data.customerName)},</p>
         <p style="margin: 0 0 16px 0;">Tu pedido ha sido recibido y estamos preparando tu cafe especializado.</p>
         <p style="margin: 0 0 8px 0;"><strong>Entrega:</strong> ${data.scheduledDate}</p>
         <p style="margin: 0 0 8px 0;"><strong>Productos:</strong></p>
@@ -104,7 +112,7 @@ export async function sendDomicilioEnCaminoEmail(data: {
   if (!resend) return;
 
   const driverInfo = data.driverName
-    ? `<p style="margin: 0 0 8px 0;"><strong>Mensajero:</strong> ${data.driverName}${data.driverPhone ? ` — ${data.driverPhone}` : ''}</p>`
+    ? `<p style="margin: 0 0 8px 0;"><strong>Mensajero:</strong> ${escapeHtml(data.driverName)}${data.driverPhone ? ` — ${escapeHtml(data.driverPhone)}` : ''}</p>`
     : '';
 
   const trackingBtn = data.trackingUrl
@@ -115,7 +123,7 @@ export async function sendDomicilioEnCaminoEmail(data: {
     <tr>
       <td style="padding: 24px;">
         <p style="margin: 0 0 8px 0; font-size: 14px; color: #666;">Pedido #${formatOrderId(data.orderId)}</p>
-        <p style="margin: 0 0 16px 0; font-size: 16px;">Hola ${data.customerName},</p>
+        <p style="margin: 0 0 16px 0; font-size: 16px;">Hola ${escapeHtml(data.customerName)},</p>
         <p style="margin: 0 0 16px 0;">Tu pedido esta en camino hacia ti.</p>
         ${driverInfo}
         ${trackingBtn}
@@ -146,7 +154,7 @@ export async function sendDomicilioEntregadoEmail(data: {
     <tr>
       <td style="padding: 24px;">
         <p style="margin: 0 0 8px 0; font-size: 14px; color: #666;">Pedido #${formatOrderId(data.orderId)}</p>
-        <p style="margin: 0 0 16px 0; font-size: 16px;">Hola ${data.customerName},</p>
+        <p style="margin: 0 0 16px 0; font-size: 16px;">Hola ${escapeHtml(data.customerName)},</p>
         <p style="margin: 0 0 16px 0;">Tu pedido ha sido entregado exitosamente. Esperamos que disfrutes tu cafe KPU.</p>
         <p style="margin: 0 0 16px 0;">Gracias por tu compra. Estamos listos para tu proximo pedido.</p>
       </td>
