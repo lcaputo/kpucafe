@@ -17,6 +17,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'Invalid credentials' }, { status: 401 });
     }
 
+    if (!user.registrationComplete) {
+      return NextResponse.json(
+        { message: 'Debes completar tu registro primero. Revisa tu correo electronico.' },
+        { status: 403 }
+      );
+    }
+
     const accessToken = await signAccessToken({ sub: user.id, email: user.email });
     const refreshToken = await signRefreshToken({ sub: user.id, email: user.email });
     await setAuthCookies(accessToken, refreshToken);
