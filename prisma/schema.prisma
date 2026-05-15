@@ -43,12 +43,20 @@ enum SubscriptionStatus {
   @@map("subscription_status")
 }
 
+enum OrderSource {
+  web
+  whatsapp
+
+  @@map("order_source")
+}
+
 // -- Users (replaces auth.users) --
 
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   email        String   @unique
-  passwordHash String   @map("password_hash")
+  passwordHash         String   @default("") @map("password_hash")
+  registrationComplete Boolean  @default(true) @map("registration_complete")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -179,6 +187,7 @@ model Order {
   trackingNumber     String?     @map("tracking_number")
   paymentReference   String?     @map("payment_reference")
   notes              String?
+  source             OrderSource @default(web)
   deliveryMethod     String?     @map("delivery_method")
   shippingCost       Int?        @map("shipping_cost")
   scheduledDate      DateTime?   @map("scheduled_date") @db.Timestamptz
