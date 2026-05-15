@@ -140,7 +140,7 @@ function CalendarView({
   // Group domicilios by day and time slot
   const grouped: Record<string, Record<string, Domicilio[]>> = {};
   for (const d of domicilios) {
-    const dayKey = d.scheduledDate ? d.scheduledDate.split('T')[0] : null;
+    const dayKey = d.scheduledDate ? new Date(d.scheduledDate).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) : null;
     if (!dayKey) continue;
     if (!grouped[dayKey]) grouped[dayKey] = {};
     // Determine time slot
@@ -254,7 +254,7 @@ function ListView({
           <tbody className="divide-y divide-border">
             {domicilios.map(dom => {
               const cfg = dom.muStatus ? muStatusConfig[dom.muStatus] : null;
-              const canDispatch = !dom.muStatus && !!dom.scheduledDate;
+              const canDispatch = (!dom.muStatus || dom.muStatus === 'error');
               const isSelected = dom.id === selectedId;
               return (
                 <tr
@@ -498,10 +498,11 @@ function TrackingPanel({
 // ─── NewDomicilioForm ─────────────────────────────────────────────────────────
 
 interface CartEntry {
+  productId: string;
   variantId: string;
   productName: string;
   variantInfo: string;
-  price: number;
+  unitPrice: number;
   quantity: number;
 }
 
@@ -586,10 +587,11 @@ function NewDomicilioForm({
       setCart(cart.map(c => c.variantId === variant.id ? { ...c, quantity: c.quantity + 1 } : c));
     } else {
       setCart([...cart, {
+        productId: product.id,
         variantId: variant.id,
         productName: product.name,
         variantInfo: `${variant.weight} - ${variant.grind}`,
-        price: product.basePrice + variant.priceModifier,
+        unitPrice: product.basePrice + variant.priceModifier,
         quantity: 1,
       }]);
     }
@@ -605,7 +607,7 @@ function NewDomicilioForm({
     setCart(prev => prev.filter(c => c.variantId !== variantId));
   };
 
-  const cartTotal = cart.reduce((sum, c) => sum + c.price * c.quantity, 0);
+  const cartTotal = cart.reduce((sum, c) => sum + c.unitPrice * c.quantity, 0);
 
   const goToStep2 = () => {
     const hasCustomer = selectedCustomer || (isNewCustomer && newCustomerName.trim());
@@ -635,15 +637,20 @@ function NewDomicilioForm({
 
       const body = {
         customer: selectedCustomer
-          ? { id: selectedCustomer.id }
-          : { name: newCustomerName, email: newCustomerEmail, phone: newCustomerPhone },
-        deliveryAddress,
-        deliveryCity,
-        items: cart.map(c => ({ variantId: c.variantId, quantity: c.quantity })),
+          ? { id: selectedCustomer.id, fullName: selectedCustomer.fullName ?? '', email: selectedCustomer.email, phone: selectedCustomer.phone ?? '' }
+          : { fullName: newCustomerName, email: newCustomerEmail, phone: newCustomerPhone },
+        address: { address: deliveryAddress, city: deliveryCity },
+        items: cart.map(c => ({
+          productId: c.productId,
+          variantId: c.variantId,
+          productName: c.productName,
+          variantInfo: c.variantInfo,
+          quantity: c.quantity,
+          unitPrice: c.unitPrice,
+        })),
         paymentMethod,
-        dispatchType,
-        scheduledDate: scheduledDateTime,
-        notes: notes.trim() || null,
+        dispatch: { type: dispatchType, date: scheduledDateTime ?? undefined, timeSlot: dispatchType === 'scheduled' ? scheduledSlot : undefined },
+        notes: notes.trim(),
       };
 
       const res = await fetch('/api/admin/domicilios', {
@@ -879,7 +886,7 @@ function NewDomicilioForm({
                           </button>
                         </div>
                         <p className="text-xs font-semibold text-foreground w-16 text-right">
-                          ${(entry.price * entry.quantity).toLocaleString('es-CO')}
+                          ${(entry.unitPrice * entry.quantity).toLocaleString('es-CO')}
                         </p>
                         <button onClick={() => removeFromCart(entry.variantId)}
                           className="p-1 rounded-lg hover:bg-red-50 hover:text-red-500 transition-colors">

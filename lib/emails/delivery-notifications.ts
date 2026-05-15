@@ -52,7 +52,7 @@ const registrationBlock = (token: string): string => `
     <div style="background-color: #FFF8F0; border: 1px solid #D4A574; border-radius: 8px; padding: 16px;">
       <p style="margin: 0 0 12px 0; font-weight: bold; color: #2D1810;">Crea tu cuenta en KPU Cafe</p>
       <p style="margin: 0 0 12px 0; font-size: 14px;">Completa tu registro para hacer pedidos en linea, ver el historial de tus compras y recibir ofertas exclusivas.</p>
-      <a href="${SITE_URL}/completar-registro?token=${token}" class="button" style="color: white;">Completar mi registro</a>
+      <a href="${SITE_URL}/completar-registro?token=${encodeURIComponent(token)}" class="button" style="color: white;">Completar mi registro</a>
     </div>
   </td>
 </tr>
