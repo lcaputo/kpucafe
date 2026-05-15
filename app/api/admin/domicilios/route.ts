@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { requireAdmin, signAccessToken } from '@/lib/auth';
 import { triggerMuDeliveryIfNeeded } from '@/lib/delivery';
@@ -14,18 +15,24 @@ export async function GET(req: NextRequest) {
     const from = url.searchParams.get('from');
     const to = url.searchParams.get('to');
 
-    const where: any = {
+    const fromDate = from ? new Date(from) : undefined;
+    const toDate = to ? new Date(to) : undefined;
+    if ((fromDate && isNaN(fromDate.getTime())) || (toDate && isNaN(toDate.getTime()))) {
+      return NextResponse.json({ message: 'Formato de fecha invalido' }, { status: 400 });
+    }
+
+    const where: Prisma.OrderWhereInput = {
       source: 'whatsapp',
       deliveryMethod: 'mensajeros_urbanos',
     };
 
     if (status) {
-      where.status = status;
+      where.status = status as Prisma.EnumOrderStatusFilter;
     }
-    if (from || to) {
+    if (fromDate || toDate) {
       where.scheduledDate = {};
-      if (from) where.scheduledDate.gte = new Date(from);
-      if (to) where.scheduledDate.lte = new Date(to);
+      if (fromDate) (where.scheduledDate as Prisma.DateTimeNullableFilter).gte = fromDate;
+      if (toDate) (where.scheduledDate as Prisma.DateTimeNullableFilter).lte = toDate;
     }
 
     const orders = await prisma.order.findMany({
@@ -56,6 +63,10 @@ export async function POST(req: NextRequest) {
       notes,
     } = body;
 
+    if (!customer?.email || !customer?.fullName || !customer?.phone || !address?.city || !Array.isArray(items) || items.length === 0 || !dispatch?.type) {
+      return NextResponse.json({ message: 'Faltan campos requeridos' }, { status: 400 });
+    }
+
     // 1. Resolve or create user
     let userId: string;
 
@@ -74,6 +85,15 @@ export async function POST(req: NextRequest) {
       const existing = await prisma.user.findUnique({ where: { email: customer.email } });
       if (existing) {
         userId = existing.id;
+        await prisma.profile.updateMany({
+          where: { userId: existing.id },
+          data: {
+            phone: customer.phone,
+            address: address.address,
+            city: address.city,
+            department: address.department || null,
+          },
+        });
       } else {
         const newUser = await prisma.user.create({
           data: {
@@ -104,7 +124,7 @@ export async function POST(req: NextRequest) {
     // 3. Determine scheduled date
     let scheduledDate: Date | null = null;
     if (dispatch.type === 'scheduled' && dispatch.date && dispatch.timeSlot) {
-      scheduledDate = new Date(`${dispatch.date}T${dispatch.timeSlot}:00`);
+      scheduledDate = new Date(`${dispatch.date}T${dispatch.timeSlot}:00-05:00`);
     }
 
     // 4. Create order
