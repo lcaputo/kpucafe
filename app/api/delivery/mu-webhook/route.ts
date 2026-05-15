@@ -8,6 +8,8 @@ import {
   sendOrderOnTheWayEmail,
   sendOrderDeliveredEmail,
 } from '@/lib/email';
+import { sendDomicilioEnCaminoEmail, sendDomicilioEntregadoEmail } from '@/lib/emails/delivery-notifications';
+import { signAccessToken } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
@@ -58,7 +60,7 @@ export async function POST(req: Request) {
         break;
 
       case 3: // assigned - driver accepted
-        await prisma.order.update({
+        const updatedOrderAssigned = await prisma.order.update({
           where: { id: order.id },
           data: {
             muStatus: 'assigned',
@@ -69,15 +71,33 @@ export async function POST(req: Request) {
             muEta: ETA || null,
           },
         });
-        if (baseEmailData) {
-          sendDriverAssignedEmail({
-            ...baseEmailData,
-            driverName: mensajero || 'Mensajero',
-            driverPhone: phone || '',
-            driverPlate: vehicle_plate || '',
-            trackingUrl: url,
-            eta: ETA,
-          }).catch(() => {});
+        if (order.source === 'whatsapp') {
+          if (order.userId && user) {
+            const registrationToken = !user.registrationComplete
+              ? await signAccessToken({ sub: user.id, email: user.email })
+              : undefined;
+            sendDomicilioEnCaminoEmail({
+              to: user.email,
+              orderId: order.id,
+              customerName: order.shippingName,
+              driverName: updatedOrderAssigned.muDriverName || undefined,
+              driverPhone: updatedOrderAssigned.muDriverPhone || undefined,
+              trackingUrl: updatedOrderAssigned.muTrackingUrl || undefined,
+              registrationComplete: user.registrationComplete,
+              registrationToken,
+            }).catch(() => {});
+          }
+        } else {
+          if (baseEmailData) {
+            sendDriverAssignedEmail({
+              ...baseEmailData,
+              driverName: mensajero || 'Mensajero',
+              driverPhone: phone || '',
+              driverPlate: vehicle_plate || '',
+              trackingUrl: url,
+              eta: ETA,
+            }).catch(() => {});
+          }
         }
         break;
 
@@ -93,18 +113,36 @@ export async function POST(req: Request) {
           }
         } else if (num_place === 2) {
           // Driver heading to customer
-          await prisma.order.update({
+          const updatedOrderDelivering = await prisma.order.update({
             where: { id: order.id },
             data: { muStatus: 'delivering', status: 'shipped' },
           });
-          if (baseEmailData) {
-            sendOrderOnTheWayEmail({
-              ...baseEmailData,
-              driverName: order.muDriverName || mensajero || 'Mensajero',
-              driverPhone: order.muDriverPhone || phone || '',
-              driverPlate: order.muDriverPlate || vehicle_plate || '',
-              trackingUrl: order.muTrackingUrl || url,
-            }).catch(() => {});
+          if (order.source === 'whatsapp') {
+            if (order.userId && user) {
+              const registrationToken = !user.registrationComplete
+                ? await signAccessToken({ sub: user.id, email: user.email })
+                : undefined;
+              sendDomicilioEnCaminoEmail({
+                to: user.email,
+                orderId: order.id,
+                customerName: order.shippingName,
+                driverName: updatedOrderDelivering.muDriverName || undefined,
+                driverPhone: updatedOrderDelivering.muDriverPhone || undefined,
+                trackingUrl: updatedOrderDelivering.muTrackingUrl || undefined,
+                registrationComplete: user.registrationComplete,
+                registrationToken,
+              }).catch(() => {});
+            }
+          } else {
+            if (baseEmailData) {
+              sendOrderOnTheWayEmail({
+                ...baseEmailData,
+                driverName: order.muDriverName || mensajero || 'Mensajero',
+                driverPhone: order.muDriverPhone || phone || '',
+                driverPlate: order.muDriverPlate || vehicle_plate || '',
+                trackingUrl: order.muTrackingUrl || url,
+              }).catch(() => {});
+            }
           }
         }
         break;
@@ -115,8 +153,23 @@ export async function POST(req: Request) {
             where: { id: order.id },
             data: { muStatus: 'finished', status: 'delivered' },
           });
-          if (baseEmailData) {
-            sendOrderDeliveredEmail(baseEmailData).catch(() => {});
+          if (order.source === 'whatsapp') {
+            if (order.userId && user) {
+              const registrationToken = !user.registrationComplete
+                ? await signAccessToken({ sub: user.id, email: user.email })
+                : undefined;
+              sendDomicilioEntregadoEmail({
+                to: user.email,
+                orderId: order.id,
+                customerName: order.shippingName,
+                registrationComplete: user.registrationComplete,
+                registrationToken,
+              }).catch(() => {});
+            }
+          } else {
+            if (baseEmailData) {
+              sendOrderDeliveredEmail(baseEmailData).catch(() => {});
+            }
           }
         } else {
           await prisma.order.update({
