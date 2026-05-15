@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   MapPin, Phone, User, Calendar, ChevronLeft, ChevronRight,
-  X, Plus, Search, Loader2, Truck, ExternalLink, Package,
+  X, Plus, Search, Loader2, Truck, ExternalLink,
   List, LayoutGrid, Check, ShoppingCart, Minus, Trash2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -560,6 +560,9 @@ function NewDomicilioForm({
       }
       setCustomerSearching(false);
     }, 300);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
   }, [customerSearch, isNewCustomer]);
 
   // Load products when entering step 2
