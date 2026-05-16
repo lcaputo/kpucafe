@@ -74,16 +74,18 @@ model User {
 // -- Profiles --
 
 model Profile {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @unique @map("user_id") @db.Uuid
-  fullName   String?  @map("full_name")
-  phone      String?
-  address    String?
-  city       String?
-  department String?
-  postalCode String?  @map("postal_code")
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  fullName       String?  @map("full_name")
+  phone          String?
+  address        String?
+  city           String?
+  department     String?
+  postalCode     String?  @map("postal_code")
+  documentType   String?  @map("document_type")
+  documentNumber String?  @map("document_number")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

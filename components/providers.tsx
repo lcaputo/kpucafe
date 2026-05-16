@@ -6,12 +6,14 @@ import { Toaster } from '@/components/ui/toaster';
 // ─── Auth types ──────────────────────────────────────────────────────────────
 
 interface UserProfile {
-  full_name: string | null;
+  fullName: string | null;
   phone: string | null;
   address: string | null;
   city: string | null;
   department: string | null;
-  postal_code: string | null;
+  postalCode: string | null;
+  documentType: string | null;
+  documentNumber: string | null;
 }
 
 interface AuthUser {
@@ -121,6 +123,7 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
+  hydrated: boolean;
   addItem: (item: Omit<CartItem, 'quantity'>) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
@@ -134,20 +137,25 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const stored = localStorage.getItem('kpu-cart');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('kpu-cart', JSON.stringify(items));
-  }, [items]);
+    try {
+      const stored = localStorage.getItem('kpu-cart');
+      if (stored) setItems(JSON.parse(stored));
+    } catch {
+      // ignore corrupt localStorage
+    }
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (hydrated) {
+      localStorage.setItem('kpu-cart', JSON.stringify(items));
+    }
+  }, [items, hydrated]);
 
   const addItem = (newItem: Omit<CartItem, 'quantity'>) => {
     setItems(prev => {
@@ -189,6 +197,7 @@ function CartProvider({ children }: { children: ReactNode }) {
     <CartContext.Provider
       value={{
         items,
+        hydrated,
         addItem,
         removeItem,
         updateQuantity,

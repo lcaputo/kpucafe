@@ -3,6 +3,7 @@ import { createHash } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { log } from '@/lib/logger';
 import { triggerMuDeliveryIfNeeded, triggerEnviaDeliveryIfNeeded } from '@/lib/delivery';
+import { emitOrderUpdate } from '@/lib/order-events';
 
 /**
  * ePayco confirmation webhook.
@@ -123,6 +124,7 @@ export async function POST(req: Request) {
         where: { id: order.id },
         data: { status: 'paid', paymentReference: x_ref_payco },
       });
+      emitOrderUpdate(order.id, { status: 'paid' });
 
       log({
         level: 'info',
@@ -143,6 +145,7 @@ export async function POST(req: Request) {
           where: { id: order.id },
           data: { status: 'cancelled', paymentReference: x_ref_payco },
         });
+        emitOrderUpdate(order.id, { status: 'cancelled' });
       }
 
       log({

@@ -6,6 +6,7 @@ import {
   sendEnviaOutForDeliveryEmail,
   sendOrderDeliveredEmail,
 } from '@/lib/email';
+import { emitOrderUpdate } from '@/lib/order-events';
 
 function mapEnviaStatus(status: string): 'picked_up' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'exception' | 'returned' | null {
   const s = status.toLowerCase();
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
           where: { id: order.id },
           data: { muStatus: 'picked_up' },
         });
+        emitOrderUpdate(order.id, { muStatus: 'picked_up' });
         break;
 
       case 'in_transit':
@@ -65,6 +67,7 @@ export async function POST(req: Request) {
           where: { id: order.id },
           data: { muStatus: 'in_transit', status: 'shipped' },
         });
+        emitOrderUpdate(order.id, { status: 'shipped', muStatus: 'in_transit' });
         if (baseEmailData) {
           sendEnviaInTransitEmail({
             ...baseEmailData,
@@ -79,6 +82,7 @@ export async function POST(req: Request) {
           where: { id: order.id },
           data: { muStatus: 'out_for_delivery', status: 'shipped' },
         });
+        emitOrderUpdate(order.id, { status: 'shipped', muStatus: 'out_for_delivery' });
         if (baseEmailData) {
           sendEnviaOutForDeliveryEmail(baseEmailData).catch(() => {});
         }
@@ -89,6 +93,7 @@ export async function POST(req: Request) {
           where: { id: order.id },
           data: { muStatus: 'finished', status: 'delivered' },
         });
+        emitOrderUpdate(order.id, { status: 'delivered', muStatus: 'finished' });
         if (baseEmailData) {
           sendOrderDeliveredEmail(baseEmailData).catch(() => {});
         }
@@ -100,6 +105,7 @@ export async function POST(req: Request) {
           where: { id: order.id },
           data: { muStatus: mapped },
         });
+        emitOrderUpdate(order.id, { muStatus: mapped });
         log({ level: 'warn', type: 'delivery', action: `envia_${mapped}`, message: `Envia ${mapped} for order ${order.id}`, metadata: payload });
         break;
 

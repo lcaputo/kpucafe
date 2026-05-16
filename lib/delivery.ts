@@ -22,8 +22,7 @@ export async function triggerMuDeliveryIfNeeded(orderId: string): Promise<void> 
 
   const muConfig = getMuConfig();
   if (!muConfig.enabled) {
-    await prisma.order.update({ where: { id: orderId }, data: { muStatus: 'error' } });
-    log({ level: 'error', type: 'delivery', action: 'mu_not_enabled', message: `MU not enabled for ${order.shippingCity}`, metadata: { orderId } });
+    log({ level: 'warn', type: 'delivery', action: 'mu_not_enabled', message: `MU disabled, skipping dispatch for order ${orderId}`, metadata: { orderId } });
     return;
   }
 
@@ -60,17 +59,17 @@ export async function triggerMuDeliveryIfNeeded(orderId: string): Promise<void> 
       observation: `KPU Cafe - Pedido #${order.id.slice(0, 8)}`,
     });
 
+    log({ level: 'info', type: 'delivery', action: 'mu_service_created', message: `MU service created for order ${orderId}`, metadata: { muUuid: result.uuid, muTaskId: result.taskId, muStatus: result.status } });
+
     await prisma.order.update({
       where: { id: orderId },
       data: {
-        muUuid: result.uuid,
-        muTaskId: result.taskId,
+        ...(result.uuid ? { muUuid: result.uuid } : {}),
+        ...(result.taskId ? { muTaskId: result.taskId } : {}),
         muStatus: result.status === 1 ? 'create' : 'on_hold',
         status: 'preparing',
       },
     });
-
-    log({ level: 'info', type: 'delivery', action: 'mu_service_created', message: `MU service created for order ${orderId}`, metadata: { muUuid: result.uuid, muTaskId: result.taskId } });
 
     // Send preparing email
     if (order.user?.email) {

@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
       notes,
     } = body;
 
-    if (!customer?.email || !customer?.fullName || !customer?.phone || !address?.city || !Array.isArray(items) || items.length === 0 || !dispatch?.type) {
+    if (!customer?.email || !customer?.fullName || !address?.city || !Array.isArray(items) || items.length === 0 || !dispatch?.type) {
       return NextResponse.json({ message: 'Faltan campos requeridos' }, { status: 400 });
     }
 

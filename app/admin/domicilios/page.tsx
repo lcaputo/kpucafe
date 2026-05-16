@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   MapPin, Phone, User, Calendar, ChevronLeft, ChevronRight,
   X, Plus, Search, Loader2, Truck, ExternalLink,
-  List, LayoutGrid, Check, ShoppingCart, Minus, Trash2
+  List, LayoutGrid, Check, ShoppingCart, Minus, Trash2, Webhook
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -699,21 +699,22 @@ function NewDomicilioForm({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="bg-card rounded-2xl w-full max-w-2xl shadow-elevated flex flex-col max-h-[90vh]">
-        {/* Modal header */}
-        <div className="flex items-center justify-between p-5 border-b border-border">
+    <>
+      <div className="fixed inset-0 bg-foreground/50 z-50" onClick={onClose} />
+      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-card z-50 shadow-2xl flex flex-col animate-slide-in-right">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-border flex-shrink-0">
           <div>
-            <h2 className="font-display text-lg font-semibold text-foreground">Nuevo domicilio</h2>
+            <h2 className="font-display text-xl font-bold text-foreground">Nuevo domicilio</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Paso {step} de 3</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted transition-colors">
-            <X className="h-5 w-5 text-muted-foreground" />
+          <button onClick={onClose} className="p-2 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Step indicators */}
-        <div className="flex items-center gap-2 px-5 pt-4">
+        <div className="flex items-center gap-2 px-6 pt-4 flex-shrink-0">
           {[1, 2, 3].map(s => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
@@ -732,7 +733,7 @@ function NewDomicilioForm({
         </div>
 
         {/* Step content */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div className="flex-1 overflow-y-auto px-6 py-4">
 
           {/* ── Step 1: Cliente ── */}
           {step === 1 && (
@@ -1157,7 +1158,7 @@ function NewDomicilioForm({
         </div>
 
         {/* Footer */}
-        <div className="flex gap-3 p-5 border-t border-border">
+        <div className="flex gap-3 px-6 py-4 border-t border-border flex-shrink-0">
           {step > 1 && (
             <button onClick={() => setStep(s => s - 1)}
               className="px-4 py-2.5 rounded-xl border border-border text-foreground text-sm font-medium hover:bg-muted transition-colors">
@@ -1187,7 +1188,7 @@ function NewDomicilioForm({
           )}
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -1201,6 +1202,7 @@ export default function AdminDomiciliosPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [dispatching, setDispatching] = useState<string | null>(null);
+  const [registeringWebhook, setRegisteringWebhook] = useState(false);
 
   const fetchDomicilios = useCallback(async () => {
     try {
@@ -1219,6 +1221,20 @@ export default function AdminDomiciliosPage() {
   }, [fetchDomicilios]);
 
   const selectedDomicilio = domicilios.find(d => d.id === selectedId) ?? null;
+
+  const handleRegisterWebhook = async () => {
+    setRegisteringWebhook(true);
+    try {
+      const res = await fetch('/api/admin/delivery/register-webhook', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Error registrando webhook');
+      toast({ title: 'Webhook registrado', description: data.endpoint });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error desconocido';
+      toast({ title: 'Error', description: msg, variant: 'destructive' });
+    }
+    setRegisteringWebhook(false);
+  };
 
   const handleDispatch = async (id: string) => {
     setDispatching(id);
@@ -1268,12 +1284,25 @@ export default function AdminDomiciliosPage() {
           </button>
         </div>
 
-        <button
-          onClick={() => setShowForm(true)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" /> Nuevo domicilio
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRegisterWebhook}
+            disabled={registeringWebhook}
+            title="Registrar webhook con Mensajeros Urbanos"
+            className="flex items-center gap-2 px-3 py-2.5 border border-border text-muted-foreground rounded-xl text-sm font-medium hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            {registeringWebhook
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Webhook className="h-4 w-4" />}
+            Registrar webhook
+          </button>
+          <button
+            onClick={() => setShowForm(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
+          >
+            <Plus className="h-4 w-4" /> Nuevo domicilio
+          </button>
+        </div>
       </div>
 
       {/* Content */}

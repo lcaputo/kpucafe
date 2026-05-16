@@ -10,6 +10,7 @@ import {
 } from '@/lib/email';
 import { sendDomicilioEnCaminoEmail, sendDomicilioEntregadoEmail } from '@/lib/emails/delivery-notifications';
 import { signAccessToken } from '@/lib/auth';
+import { emitOrderUpdate } from '@/lib/order-events';
 
 export async function POST(req: Request) {
   try {
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
           where: { id: order.id },
           data: { muStatus: 'on_hold' },
         });
+        emitOrderUpdate(order.id, { muStatus: 'on_hold' });
         break;
 
       case 3: // assigned - driver accepted
@@ -70,6 +72,14 @@ export async function POST(req: Request) {
             muTrackingUrl: url || null,
             muEta: ETA || null,
           },
+        });
+        emitOrderUpdate(order.id, {
+          muStatus: 'assigned',
+          muDriverName: updatedOrderAssigned.muDriverName,
+          muDriverPhone: updatedOrderAssigned.muDriverPhone,
+          muDriverPlate: updatedOrderAssigned.muDriverPlate,
+          muTrackingUrl: updatedOrderAssigned.muTrackingUrl,
+          muEta: updatedOrderAssigned.muEta,
         });
         if (order.source === 'whatsapp') {
           if (order.userId && user) {
@@ -108,6 +118,7 @@ export async function POST(req: Request) {
             where: { id: order.id },
             data: { muStatus: 'picking_up' },
           });
+          emitOrderUpdate(order.id, { muStatus: 'picking_up' });
           if (baseEmailData) {
             sendOrderPickingUpEmail(baseEmailData).catch(() => {});
           }
@@ -116,6 +127,14 @@ export async function POST(req: Request) {
           const updatedOrderDelivering = await prisma.order.update({
             where: { id: order.id },
             data: { muStatus: 'delivering', status: 'shipped' },
+          });
+          emitOrderUpdate(order.id, {
+            status: 'shipped',
+            muStatus: 'delivering',
+            muDriverName: updatedOrderDelivering.muDriverName,
+            muDriverPhone: updatedOrderDelivering.muDriverPhone,
+            muDriverPlate: updatedOrderDelivering.muDriverPlate,
+            muTrackingUrl: updatedOrderDelivering.muTrackingUrl,
           });
           if (order.source === 'whatsapp') {
             if (order.userId && user) {
@@ -153,6 +172,7 @@ export async function POST(req: Request) {
             where: { id: order.id },
             data: { muStatus: 'finished', status: 'delivered' },
           });
+          emitOrderUpdate(order.id, { status: 'delivered', muStatus: 'finished' });
           if (order.source === 'whatsapp') {
             if (order.userId && user) {
               const registrationToken = !user.registrationComplete
@@ -176,6 +196,7 @@ export async function POST(req: Request) {
             where: { id: order.id },
             data: { muStatus: 'failed_delivery' },
           });
+          emitOrderUpdate(order.id, { muStatus: 'failed_delivery' });
           log({ level: 'warn', type: 'delivery', action: 'mu_delivery_failed', message: `Delivery failed for order ${order.id}`, metadata: payload });
         }
         break;
@@ -185,6 +206,7 @@ export async function POST(req: Request) {
           where: { id: order.id },
           data: { muStatus: 'cancelled' },
         });
+        emitOrderUpdate(order.id, { muStatus: 'cancelled' });
         log({ level: 'warn', type: 'delivery', action: 'mu_service_cancelled', message: `MU service cancelled for order ${order.id}`, metadata: payload });
         break;
     }

@@ -35,6 +35,8 @@ export async function PATCH(req: Request) {
         city: data.city,
         department: data.department,
         postalCode: data.postalCode,
+        ...(data.documentType !== undefined && { documentType: data.documentType }),
+        ...(data.documentNumber !== undefined && { documentNumber: data.documentNumber }),
       },
     });
 

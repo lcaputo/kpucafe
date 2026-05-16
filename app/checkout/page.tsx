@@ -27,11 +27,15 @@ import Header from '@/components/header';
 import Footer from '@/components/footer';
 
 interface ShippingForm {
-  fullName: string;
+  firstName: string;
+  lastName: string;
+  documentType: string;
+  documentNumber: string;
   phone: string;
   email: string;
   password: string;
   address: string;
+  addressDetail: string;
   city: string;
   department: string;
   postalCode: string;
@@ -90,8 +94,55 @@ const DEPARTMENTS = [
   'Vichada',
 ];
 
+const CITIES_BY_DEPARTMENT: Record<string, string[]> = {
+  'Amazonas': ['Leticia', 'Puerto Narino'],
+  'Antioquia': ['Medellin', 'Bello', 'Itagui', 'Envigado', 'Apartado', 'Turbo', 'Rionegro', 'Sabaneta', 'La Estrella', 'Copacabana', 'Caldas', 'Barbosa'],
+  'Arauca': ['Arauca', 'Saravena', 'Tame', 'Fortul'],
+  'Atlantico': ['Barranquilla', 'Soledad', 'Malambo', 'Sabanalarga', 'Baranoa', 'Puerto Colombia', 'Galapa'],
+  'Bogota D.C.': ['Bogota'],
+  'Bolivar': ['Cartagena', 'Magangue', 'Turbaco', 'El Carmen de Bolivar', 'Mompox'],
+  'Boyaca': ['Tunja', 'Duitama', 'Sogamoso', 'Chiquinquira', 'Paipa', 'Nobsa'],
+  'Caldas': ['Manizales', 'Villamaria', 'La Dorada', 'Riosucio', 'Chinchina'],
+  'Caqueta': ['Florencia', 'San Vicente del Caguan'],
+  'Casanare': ['Yopal', 'Aguazul', 'Villanueva', 'Paz de Ariporo'],
+  'Cauca': ['Popayan', 'Santander de Quilichao', 'Puerto Tejada', 'Miranda'],
+  'Cesar': ['Valledupar', 'Aguachica', 'Codazzi', 'Curumani'],
+  'Choco': ['Quibdo', 'Istmina'],
+  'Cordoba': ['Monteria', 'Lorica', 'Cerete', 'Montelibano'],
+  'Cundinamarca': ['Soacha', 'Fusagasuga', 'Facatativa', 'Zipaquira', 'Chia', 'Mosquera', 'Madrid', 'Funza', 'Cajica', 'Tocancipa', 'Girardot', 'La Mesa', 'Cota'],
+  'Guainia': ['Inirida'],
+  'Guaviare': ['San Jose del Guaviare'],
+  'Huila': ['Neiva', 'Pitalito', 'Garzon', 'La Plata', 'Campoalegre'],
+  'La Guajira': ['Riohacha', 'Maicao', 'Uribia'],
+  'Magdalena': ['Santa Marta', 'Cienaga', 'Fundacion', 'El Banco'],
+  'Meta': ['Villavicencio', 'Acacias', 'Granada', 'Puerto Lopez'],
+  'Narino': ['Pasto', 'Tumaco', 'Ipiales', 'Tuquerres'],
+  'Norte de Santander': ['Cucuta', 'Ocana', 'Pamplona', 'Villa del Rosario', 'Los Patios'],
+  'Putumayo': ['Mocoa', 'Puerto Asis'],
+  'Quindio': ['Armenia', 'Calarca', 'Montenegro', 'Quimbaya'],
+  'Risaralda': ['Pereira', 'Dosquebradas', 'Santa Rosa de Cabal'],
+  'San Andres y Providencia': ['San Andres', 'Providencia'],
+  'Santander': ['Bucaramanga', 'Floridablanca', 'Giron', 'Piedecuesta', 'Barrancabermeja', 'San Gil'],
+  'Sucre': ['Sincelejo', 'Corozal', 'Sampues'],
+  'Tolima': ['Ibague', 'Espinal', 'Melgar', 'Honda', 'Chaparral'],
+  'Valle del Cauca': ['Cali', 'Buenaventura', 'Palmira', 'Tulua', 'Buga', 'Cartago', 'Yumbo', 'Jamundi', 'Candelaria'],
+  'Vaupes': ['Mitu'],
+  'Vichada': ['Puerto Carreno'],
+};
+
+const DOCUMENT_TYPES = [
+  { value: 'CC', label: 'Cédula de Ciudadanía (CC)' },
+  { value: 'CE', label: 'Cédula de Extranjería (CE)' },
+  { value: 'TI', label: 'Tarjeta de Identidad (TI)' },
+  { value: 'PA', label: 'Pasaporte (PA)' },
+  { value: 'NIT', label: 'NIT' },
+];
+
 const FIELD_LABELS: Record<string, string> = {
-  fullName: 'Nombre completo',
+  firstName: 'Nombre',
+  lastName: 'Apellido',
+  documentType: 'Tipo de documento',
+  documentNumber: 'Número de documento',
   phone: 'Telefono',
   email: 'Correo electronico',
   password: 'Contrasena',
@@ -102,11 +153,12 @@ const FIELD_LABELS: Record<string, string> = {
 
 export default function Checkout() {
   const router = useRouter();
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, hydrated, totalPrice, clearCart } = useCart();
   const { user, profile, signUp, signIn } = useAuth();
   const { savedMethods, loadingMethods, fetchMethods, saveCard, chargeSaved } = useCardPayment();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [paid, setPaid] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
@@ -149,11 +201,15 @@ export default function Checkout() {
   const [enviaQuoteLoading, setEnviaQuoteLoading] = useState(false);
 
   const [form, setForm] = useState<ShippingForm>({
-    fullName: '',
+    firstName: '',
+    lastName: '',
+    documentType: '',
+    documentNumber: '',
     phone: '',
     email: '',
     password: '',
     address: '',
+    addressDetail: '',
     city: '',
     department: '',
     postalCode: '',
@@ -166,14 +222,20 @@ export default function Checkout() {
   // Pre-fill form with user profile data
   useEffect(() => {
     if (profile) {
+      const nameParts = (profile.fullName || '').split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ');
       setForm((prev) => ({
         ...prev,
-        fullName: profile.full_name || prev.fullName,
+        firstName: firstName || prev.firstName,
+        lastName: lastName || prev.lastName,
         phone: profile.phone || prev.phone,
         address: profile.address || prev.address,
         city: profile.city || prev.city,
         department: profile.department || prev.department,
-        postalCode: profile.postal_code || prev.postalCode,
+        postalCode: profile.postalCode || prev.postalCode,
+        documentType: profile.documentType || prev.documentType,
+        documentNumber: profile.documentNumber || prev.documentNumber,
       }));
     }
     if (user?.email) {
@@ -239,15 +301,23 @@ export default function Checkout() {
     }
   };
 
+  const splitFullName = (fullName: string) => {
+    const parts = fullName.trim().split(' ');
+    return { firstName: parts[0] || '', lastName: parts.slice(1).join(' ') };
+  };
+
   const selectAddress = (addr: SavedAddress) => {
     setSelectedAddressId(addr.id);
     setShowNewAddress(false);
     setEditingAddressId(null);
+    const { firstName, lastName } = splitFullName(addr.full_name);
     setForm((prev) => ({
       ...prev,
-      fullName: addr.full_name,
+      firstName,
+      lastName,
       phone: addr.phone,
       address: addr.address,
+      addressDetail: '',
       city: addr.city,
       department: addr.department,
       postalCode: addr.postal_code || '',
@@ -259,16 +329,21 @@ export default function Checkout() {
     setSelectedAddressId(addr.id);
     setShowNewAddress(false);
     setAddressLabel(addr.label);
+    const { firstName, lastName } = splitFullName(addr.full_name);
     setForm((prev) => ({
       ...prev,
-      fullName: addr.full_name,
+      firstName,
+      lastName,
       phone: addr.phone,
       address: addr.address,
+      addressDetail: '',
       city: addr.city,
       department: addr.department,
       postalCode: addr.postal_code || '',
     }));
   };
+
+  const fullName = `${form.firstName} ${form.lastName}`.trim();
 
   const saveEditAddress = async () => {
     if (!validateForm() || !editingAddressId) return;
@@ -278,9 +353,9 @@ export default function Checkout() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           label: addressLabel,
-          fullName: form.fullName,
+          fullName,
           phone: form.phone,
-          address: form.address,
+          address: [form.address, form.addressDetail].filter(Boolean).join(', '),
           city: form.city,
           department: form.department,
           postalCode: form.postalCode || null,
@@ -304,28 +379,34 @@ export default function Checkout() {
         } else {
           setSelectedAddressId(null);
           setShowNewAddress(true);
-          setForm((prev) => ({ ...prev, address: '', city: '', department: '', postalCode: '' }));
+          setForm((prev) => ({ ...prev, address: '', addressDetail: '', city: '', department: '', postalCode: '' }));
         }
       }
     } catch {}
   };
 
   useEffect(() => {
-    if (items.length === 0) router.push('/');
-  }, [items.length, router]);
+    if (hydrated && items.length === 0 && !paid) router.push('/');
+  }, [hydrated, items.length, router, paid]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+    if (name === 'department') {
+      setForm((prev) => ({ ...prev, department: value, city: '' }));
+      if (errors.department) setErrors((prev) => ({ ...prev, department: '' }));
+      if (errors.city) setErrors((prev) => ({ ...prev, city: '' }));
+    } else {
+      setForm((prev) => ({ ...prev, [name]: value }));
+      if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+    }
   };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
     const required =
       needsAccount && step === 'account'
-        ? ['fullName', 'email', 'password']
-        : ['fullName', 'phone', 'address', 'city', 'department'];
+        ? ['firstName', 'lastName', 'email', 'password']
+        : ['firstName', 'lastName', 'documentType', 'documentNumber', 'phone', 'address', 'city', 'department'];
 
     for (const field of required) {
       if (!form[field as keyof ShippingForm]?.trim()) {
@@ -365,7 +446,7 @@ export default function Checkout() {
 
       // If sign in fails, create account
       try {
-        await signUp(form.email, form.password, form.fullName);
+        await signUp(form.email, form.password, fullName);
         toast({ title: 'Cuenta creada', description: 'Tu cuenta ha sido creada automaticamente.' });
         setStep('shipping');
       } catch (signUpErr: any) {
@@ -390,9 +471,9 @@ export default function Checkout() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           label: addressLabel,
-          fullName: form.fullName,
+          fullName,
           phone: form.phone,
-          address: form.address,
+          address: [form.address, form.addressDetail].filter(Boolean).join(', '),
           city: form.city,
           department: form.department,
           postalCode: form.postalCode || null,
@@ -414,9 +495,9 @@ export default function Checkout() {
 
     return {
       total: finalTotal,
-      shippingName: form.fullName,
+      shippingName: fullName,
       shippingPhone: form.phone,
-      shippingAddress: form.address,
+      shippingAddress: [form.address, form.addressDetail].filter(Boolean).join(', '),
       shippingCity: form.city,
       shippingDepartment: form.department,
       shippingPostalCode: form.postalCode || null,
@@ -454,6 +535,7 @@ export default function Checkout() {
       if (!orderRes.ok) throw new Error(order.message || 'Error al crear pedido');
 
       const result = await chargeSaved(selectedMethodId!, finalTotal, order.id);
+      setPaid(true);
       clearCart();
       router.push(`/pedido/${order.id}`);
     } catch (err: any) {
@@ -489,6 +571,7 @@ export default function Checkout() {
         await fetch(`/api/payment-methods/${methodId}`, { method: 'DELETE' });
       }
 
+      setPaid(true);
       clearCart();
       router.push(`/pedido/${order.id}`);
     } catch (err: any) {
@@ -606,18 +689,42 @@ export default function Checkout() {
     setEnviaQuoteLoading(false);
   };
 
-  useEffect(() => {
-    fetchMuQuote(form.city, form.address);
-    fetchEnviaQuote(form.city, form.address, form.department, form.postalCode);
-  }, [form.city, form.address, form.department, form.postalCode]);
+  // Quote is triggered when the user clicks "Revisar y Pagar"
+  const handleProceedToReview = async () => {
+    if (!validateForm()) return;
+    const fullAddress = [form.address, form.addressDetail].filter(Boolean).join(', ');
+    // Save profile data (including document info) in background
+    if (user) {
+      fetch('/api/profiles/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fullName,
+          phone: form.phone,
+          documentType: form.documentType,
+          documentNumber: form.documentNumber,
+        }),
+      }).catch(() => {});
+    }
+    await Promise.all([
+      fetchMuQuote(form.city, fullAddress),
+      fetchEnviaQuote(form.city, fullAddress, form.department, form.postalCode),
+    ]);
+    setStep('review');
+  };
 
-  const shippingCost = totalPrice >= 100000
+  // Shipping cost is only calculated after quote (on review step)
+  // Use loose != null to catch both null and undefined from API responses
+  const shippingCost = (totalPrice >= 100000
     ? 0
-    : muAvailable && muShippingCost !== null
+    : muAvailable && muShippingCost != null
       ? muShippingCost
-      : enviaAvailable && enviaShippingCost !== null
+      : enviaAvailable && enviaShippingCost != null
         ? enviaShippingCost
-        : 12000;
+        : step === 'review'
+          ? 12000
+          : 0) ?? 0;
+
   const discountAmount = appliedCoupon
     ? appliedCoupon.discount_type === 'percentage'
       ? Math.round((totalPrice * appliedCoupon.discount_value) / 100)
@@ -627,6 +734,8 @@ export default function Checkout() {
 
   const inputClass = (field: string) =>
     `w-full px-4 py-3 rounded-xl border ${errors[field] ? 'border-destructive ring-2 ring-destructive/20' : 'border-border'} bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent transition-all`;
+
+  const availableCities = form.department ? (CITIES_BY_DEPARTMENT[form.department] || []) : [];
 
   return (
     <div className="min-h-screen bg-background">
@@ -671,17 +780,29 @@ export default function Checkout() {
                   </p>
 
                   <div className="grid sm:grid-cols-2 gap-4">
-                    <div className="sm:col-span-2">
-                      <label className="block text-sm font-medium text-foreground mb-1.5">Nombre completo *</label>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">Nombre *</label>
                       <input
                         type="text"
-                        name="fullName"
-                        value={form.fullName}
+                        name="firstName"
+                        value={form.firstName}
                         onChange={handleInputChange}
-                        className={inputClass('fullName')}
-                        placeholder="Tu nombre completo"
+                        className={inputClass('firstName')}
+                        placeholder="Tu nombre"
                       />
-                      {errors.fullName && <ErrorMsg msg={errors.fullName} />}
+                      {errors.firstName && <ErrorMsg msg={errors.firstName} />}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-1.5">Apellido *</label>
+                      <input
+                        type="text"
+                        name="lastName"
+                        value={form.lastName}
+                        onChange={handleInputChange}
+                        className={inputClass('lastName')}
+                        placeholder="Tu apellido"
+                      />
+                      {errors.lastName && <ErrorMsg msg={errors.lastName} />}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-foreground mb-1.5">Email *</label>
@@ -726,6 +847,94 @@ export default function Checkout() {
                   <div className="flex items-center gap-3 mb-6">
                     <Truck className="h-6 w-6 text-primary" />
                     <h2 className="font-display text-lg sm:text-xl font-bold text-card-foreground">Datos de Envio</h2>
+                  </div>
+
+                  {/* Personal info - always visible */}
+                  <div className="mb-6">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Información personal</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Nombre *</label>
+                        <input
+                          type="text"
+                          name="firstName"
+                          value={form.firstName}
+                          onChange={handleInputChange}
+                          className={inputClass('firstName')}
+                          placeholder="Nombre"
+                        />
+                        {errors.firstName && <ErrorMsg msg={errors.firstName} />}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Apellido *</label>
+                        <input
+                          type="text"
+                          name="lastName"
+                          value={form.lastName}
+                          onChange={handleInputChange}
+                          className={inputClass('lastName')}
+                          placeholder="Apellido"
+                        />
+                        {errors.lastName && <ErrorMsg msg={errors.lastName} />}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Tipo de documento *</label>
+                        <select
+                          name="documentType"
+                          value={form.documentType}
+                          onChange={handleInputChange}
+                          className={inputClass('documentType')}
+                        >
+                          <option value="">Selecciona...</option>
+                          {DOCUMENT_TYPES.map((dt) => (
+                            <option key={dt.value} value={dt.value}>{dt.label}</option>
+                          ))}
+                        </select>
+                        {errors.documentType && <ErrorMsg msg={errors.documentType} />}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Número de documento *</label>
+                        <input
+                          type="text"
+                          name="documentNumber"
+                          value={form.documentNumber}
+                          onChange={handleInputChange}
+                          className={inputClass('documentNumber')}
+                          placeholder="1234567890"
+                        />
+                        {errors.documentNumber && <ErrorMsg msg={errors.documentNumber} />}
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-foreground mb-1.5">Telefono *</label>
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={form.phone}
+                          onChange={handleInputChange}
+                          className={inputClass('phone')}
+                          placeholder="300 123 4567"
+                        />
+                        {errors.phone && <ErrorMsg msg={errors.phone} />}
+                      </div>
+                      {!user && (
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Email *</label>
+                          <input
+                            type="email"
+                            name="email"
+                            value={form.email}
+                            onChange={handleInputChange}
+                            className={inputClass('email')}
+                            placeholder="tu@email.com"
+                          />
+                          {errors.email && <ErrorMsg msg={errors.email} />}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-border pt-5 mb-5">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Dirección de entrega</p>
                   </div>
 
                   {/* Saved addresses - compact list */}
@@ -785,6 +994,7 @@ export default function Checkout() {
                             setForm((prev) => ({
                               ...prev,
                               address: '',
+                              addressDetail: '',
                               city: '',
                               department: '',
                               postalCode: '',
@@ -833,56 +1043,37 @@ export default function Checkout() {
                       )}
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-foreground mb-1.5">Nombre completo *</label>
-                          <input
-                            type="text"
-                            name="fullName"
-                            value={form.fullName}
-                            onChange={handleInputChange}
-                            className={inputClass('fullName')}
-                            placeholder="Nombre del destinatario"
-                          />
-                          {errors.fullName && <ErrorMsg msg={errors.fullName} />}
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-foreground mb-1.5">Telefono *</label>
-                          <input
-                            type="tel"
-                            name="phone"
-                            value={form.phone}
-                            onChange={handleInputChange}
-                            className={inputClass('phone')}
-                            placeholder="300 123 4567"
-                          />
-                          {errors.phone && <ErrorMsg msg={errors.phone} />}
-                        </div>
-                        {!user && (
-                          <div className="sm:col-span-2">
-                            <label className="block text-sm font-medium text-foreground mb-1.5">Email *</label>
-                            <input
-                              type="email"
-                              name="email"
-                              value={form.email}
-                              onChange={handleInputChange}
-                              className={inputClass('email')}
-                              placeholder="tu@email.com"
-                            />
-                            {errors.email && <ErrorMsg msg={errors.email} />}
-                          </div>
-                        )}
+                        {/* Dirección principal */}
                         <div className="sm:col-span-2">
-                          <label className="block text-sm font-medium text-foreground mb-1.5">Direccion *</label>
+                          <label className="block text-sm font-medium text-foreground mb-1.5">Dirección principal *</label>
                           <input
                             type="text"
                             name="address"
                             value={form.address}
                             onChange={handleInputChange}
                             className={inputClass('address')}
-                            placeholder="Calle, numero, apartamento, etc."
+                            placeholder="Calle 45 # 23-10"
                           />
                           {errors.address && <ErrorMsg msg={errors.address} />}
                         </div>
+
+                        {/* Información adicional */}
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-medium text-foreground mb-1.5">
+                            Información adicional
+                            <span className="text-muted-foreground font-normal ml-1">(opcional)</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="addressDetail"
+                            value={form.addressDetail}
+                            onChange={handleInputChange}
+                            className={inputClass('addressDetail')}
+                            placeholder="Torre 3, Apto 402, Edificio Pinos..."
+                          />
+                        </div>
+
+                        {/* Departamento */}
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-1.5">Departamento *</label>
                           <select
@@ -893,25 +1084,33 @@ export default function Checkout() {
                           >
                             <option value="">Selecciona...</option>
                             {DEPARTMENTS.map((d) => (
-                              <option key={d} value={d}>
-                                {d}
-                              </option>
+                              <option key={d} value={d}>{d}</option>
                             ))}
                           </select>
                           {errors.department && <ErrorMsg msg={errors.department} />}
                         </div>
+
+                        {/* Ciudad - dropdown filtrado por departamento */}
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-1.5">Ciudad *</label>
-                          <input
-                            type="text"
+                          <select
                             name="city"
                             value={form.city}
                             onChange={handleInputChange}
+                            disabled={!form.department}
                             className={inputClass('city')}
-                            placeholder="Ciudad"
-                          />
+                          >
+                            <option value="">
+                              {form.department ? 'Selecciona ciudad...' : 'Selecciona departamento primero'}
+                            </option>
+                            {availableCities.map((c) => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                          </select>
                           {errors.city && <ErrorMsg msg={errors.city} />}
                         </div>
+
+                        {/* Código postal */}
                         <div>
                           <label className="block text-sm font-medium text-foreground mb-1.5">Codigo Postal</label>
                           <input
@@ -961,88 +1160,20 @@ export default function Checkout() {
                     />
                   </div>
 
-                  {/* MU Delivery Options */}
-                  {muAvailable && (
-                    <div className="mt-6 p-4 bg-primary/5 rounded-xl border border-primary/20">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Truck className="h-5 w-5 text-primary" />
-                        <span className="font-semibold text-foreground">Envio con Mensajeros Urbanos</span>
-                        {muQuoteLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-                      </div>
-                      {muShippingCost !== null && (
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Costo de envio: <span className="font-semibold text-foreground">${muShippingCost.toLocaleString('es-CO')}</span>
-                        </p>
-                      )}
-                      <div className="space-y-3">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <input type="radio" name="deliverySchedule" checked={!scheduleDelivery}
-                            onChange={() => setScheduleDelivery(false)}
-                            className="w-4 h-4 text-primary" />
-                          <span className="text-sm text-foreground">Enviar ahora</span>
-                        </label>
-                        <label className="flex items-center gap-3 cursor-pointer">
-                          <input type="radio" name="deliverySchedule" checked={scheduleDelivery}
-                            onChange={() => setScheduleDelivery(true)}
-                            className="w-4 h-4 text-primary" />
-                          <span className="text-sm text-foreground">Programar envio</span>
-                        </label>
-                        {scheduleDelivery && (
-                          <div className="ml-7 space-y-3">
-                            <div>
-                              <label className="text-sm text-muted-foreground mb-1 block">Fecha</label>
-                              <input type="date" className={inputClass('')}
-                                min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
-                                max={new Date(Date.now() + muAvailableDays * 86400000).toISOString().split('T')[0]}
-                                value={scheduledDate}
-                                onChange={(e) => setScheduledDate(e.target.value)} />
-                            </div>
-                            <div>
-                              <label className="text-sm text-muted-foreground mb-1 block">Franja horaria</label>
-                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                {muTimeSlots.map((slot) => (
-                                  <button key={slot.label} type="button"
-                                    onClick={() => setScheduledSlot(slot.label)}
-                                    className={`px-3 py-2 rounded-lg border text-sm transition-colors ${scheduledSlot === slot.label
-                                      ? 'border-primary bg-primary/10 text-primary font-medium'
-                                      : 'border-input bg-background text-foreground hover:border-primary/50'
-                                    }`}>
-                                    {slot.label}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Envia Delivery Info */}
-                  {enviaAvailable && !muAvailable && (
-                    <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/10 rounded-xl border border-green-200 dark:border-green-800">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Truck className="h-5 w-5 text-green-600" />
-                        <span className="font-semibold text-foreground">Envio nacional con {enviaCarrier}</span>
-                        {enviaQuoteLoading && <Loader2 className="h-4 w-4 animate-spin text-green-600" />}
-                      </div>
-                      {enviaShippingCost !== null && (
-                        <p className="text-sm text-muted-foreground">
-                          Costo: <span className="font-semibold text-foreground">${enviaShippingCost.toLocaleString('es-CO')}</span>
-                          {enviaDeliveryEstimate && <span className="ml-2">— Entrega estimada: {enviaDeliveryEstimate}</span>}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
                   {!editingAddressId && (
                     <button
-                      onClick={() => {
-                        if (validateForm()) setStep('review');
-                      }}
-                      className="w-full mt-5 btn-kpu flex items-center justify-center gap-2"
+                      onClick={handleProceedToReview}
+                      disabled={muQuoteLoading || enviaQuoteLoading}
+                      className="w-full mt-5 btn-kpu flex items-center justify-center gap-2 disabled:opacity-70"
                     >
-                      Revisar y Pagar
+                      {muQuoteLoading || enviaQuoteLoading ? (
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                          Cotizando envio...
+                        </>
+                      ) : (
+                        'Revisar y Pagar'
+                      )}
                     </button>
                   )}
                 </div>
@@ -1062,9 +1193,11 @@ export default function Checkout() {
                       </button>
                     </div>
                     <div className="bg-muted/50 rounded-xl p-4">
-                      <p className="font-medium text-foreground">{form.fullName}</p>
+                      <p className="font-medium text-foreground">{fullName}</p>
                       <p className="text-sm text-muted-foreground">{form.phone}</p>
-                      <p className="text-sm text-foreground">{form.address}</p>
+                      <p className="text-sm text-foreground">
+                        {[form.address, form.addressDetail].filter(Boolean).join(', ')}
+                      </p>
                       <p className="text-sm text-foreground">
                         {form.city}, {form.department}
                       </p>
@@ -1162,14 +1295,57 @@ export default function Checkout() {
                         </div>
                       )}
                       {muAvailable && (
-                        <div className="flex items-center gap-2 py-2">
-                          <Truck className="h-4 w-4 text-primary" />
-                          <span className="text-sm font-medium text-primary">Envio con Mensajeros Urbanos</span>
-                          {scheduleDelivery && scheduledDate && scheduledSlot && (
-                            <span className="text-xs text-muted-foreground">
-                              - Programado: {new Date(scheduledDate + 'T00:00:00').toLocaleDateString('es-CO', { weekday: 'long', month: 'long', day: 'numeric' })} {scheduledSlot}
-                            </span>
-                          )}
+                        <div className="py-2 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Truck className="h-4 w-4 text-primary" />
+                            <span className="text-sm font-medium text-primary">Mensajeros Urbanos</span>
+                          </div>
+                          <div className="ml-6 space-y-2">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                              <input type="radio" name="deliverySchedule" checked={!scheduleDelivery}
+                                onChange={() => setScheduleDelivery(false)}
+                                className="w-4 h-4 text-primary" />
+                              <span className="text-sm text-foreground">Enviar ahora</span>
+                            </label>
+                            <label className="flex items-center gap-3 cursor-pointer">
+                              <input type="radio" name="deliverySchedule" checked={scheduleDelivery}
+                                onChange={() => setScheduleDelivery(true)}
+                                className="w-4 h-4 text-primary" />
+                              <span className="text-sm text-foreground">Programar envio</span>
+                            </label>
+                            {scheduleDelivery && (
+                              <div className="ml-7 space-y-3 pt-1">
+                                <div>
+                                  <label className="text-sm text-muted-foreground mb-1 block">Fecha</label>
+                                  <input type="date" className={inputClass('')}
+                                    min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                                    max={new Date(Date.now() + muAvailableDays * 86400000).toISOString().split('T')[0]}
+                                    value={scheduledDate}
+                                    onChange={(e) => setScheduledDate(e.target.value)} />
+                                </div>
+                                <div>
+                                  <label className="text-sm text-muted-foreground mb-1 block">Franja horaria</label>
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    {muTimeSlots.map((slot) => (
+                                      <button key={slot.label} type="button"
+                                        onClick={() => setScheduledSlot(slot.label)}
+                                        className={`px-3 py-2 rounded-lg border text-sm transition-colors ${scheduledSlot === slot.label
+                                          ? 'border-primary bg-primary/10 text-primary font-medium'
+                                          : 'border-input bg-background text-foreground hover:border-primary/50'
+                                        }`}>
+                                        {slot.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                {scheduledDate && scheduledSlot && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Programado: {new Date(scheduledDate + 'T00:00:00').toLocaleDateString('es-CO', { weekday: 'long', month: 'long', day: 'numeric' })} — {scheduledSlot}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       )}
                       {enviaAvailable && !muAvailable && (
@@ -1318,10 +1494,10 @@ export default function Checkout() {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Envio</span>
                       <span>
-                        {shippingCost === 0 ? (
+                        {totalPrice >= 100000 ? (
                           <span className="text-green-600 font-medium">Gratis</span>
                         ) : (
-                          `$${shippingCost.toLocaleString('es-CO')}`
+                          <span className="text-muted-foreground italic text-xs">Por cotizar</span>
                         )}
                       </span>
                     </div>
@@ -1329,6 +1505,9 @@ export default function Checkout() {
                       <span>Total</span>
                       <span className="font-display text-lg text-primary">${finalTotal.toLocaleString('es-CO')}</span>
                     </div>
+                    {totalPrice < 100000 && (
+                      <p className="text-xs text-muted-foreground">* El envio se cotiza al continuar</p>
+                    )}
                   </div>
                 </div>
               </div>

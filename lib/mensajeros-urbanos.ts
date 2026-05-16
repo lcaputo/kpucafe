@@ -64,6 +64,7 @@ export interface MuCreateParams {
   destination: MuDestination;
   products: MuProduct[];
   observation?: string;
+  description?: string;
 }
 
 export interface MuCreateResult {
@@ -179,12 +180,15 @@ export async function muCalculate(params: MuCalculateParams): Promise<MuCalculat
     ],
   });
 
+  // MU wraps the calculate response: { status, data: { total_service, ... } }
+  const inner = data.data ?? data;
+
   return {
-    totalService: data.total_service,
-    totalDistance: data.total_distance,
-    baseValue: data.base_value,
-    distanceSurcharge: data.distance_surcharge,
-    insuranceSurcharge: data.insurance_surcharge,
+    totalService: inner.total_service,
+    totalDistance: inner.total_distance,
+    baseValue: inner.base_value,
+    distanceSurcharge: inner.distance_surcharge,
+    insuranceSurcharge: inner.insurance_surcharge,
   };
 }
 
@@ -197,6 +201,7 @@ export async function muCreateService(params: MuCreateParams): Promise<MuCreateR
     city: params.cityId,
     start_date: params.startDate,
     start_time: params.startTime,
+    description: params.description || params.observation || 'Domicilio KPU Cafe',
     os: 'NEW API 2.0',
     coordinates: [
       {
@@ -217,19 +222,22 @@ export async function muCreateService(params: MuCreateParams): Promise<MuCreateR
           product_name: p.productName,
           quantity: p.quantity,
           value: p.value,
-          sku: p.sku || '',
+          sku: p.sku || p.productName.slice(0, 30).replace(/\s+/g, '-').toUpperCase(),
         })),
       },
     ],
     observation: params.observation || '',
   });
 
+  // MU wraps the response: { status, data: { task_id, uuid, ... } }
+  const inner = data.data ?? data;
+
   return {
-    taskId: data.task_id,
-    uuid: data.uuid,
-    status: data.status,
-    total: data.total,
-    distance: data.distance,
+    taskId: inner.task_id ?? null,
+    uuid: inner.uuid ?? null,
+    status: inner.status,
+    total: inner.total,
+    distance: inner.distance,
   };
 }
 
